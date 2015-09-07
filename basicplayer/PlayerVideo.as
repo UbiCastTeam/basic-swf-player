@@ -12,22 +12,19 @@ package basicplayer {
 	import basicplayer.PlayerClass;
 
 	public class PlayerVideo extends PlayerClass {
-		private var _isPreloading:Boolean = false;
-
+		private var _soundTransform:SoundTransform;
 		private var _connection:NetConnection;
 		private var _stream:NetStream;
-		private var _soundTransform:SoundTransform;
-		private var _oldVolume:Number = 1;
 
-		// event values
+		private var _timer:Timer;
+
+		private var _isPreloading:Boolean = false;
 		private var _isPaused:Boolean = true;
 		private var _isEnded:Boolean = false;
 
-		private var _bytesTotal:Number = 0;
+		private var _seekPending:Number = -1;
 		private var _bufferEmpty:Boolean = false;
 		private var _seekOffset:Number = 0;
-
-		private var _timer:Timer;
 
 		private var _isRTMP:Boolean = false;
 		private var _streamer:String = "";
@@ -38,11 +35,6 @@ package basicplayer {
 		private var _pseudoStreamingEnabled:Boolean = false;
 		private var _pseudoStreamingStartQueryParam:String = "start";
 
-		// (1) load()
-		// calls _connection.connect();
-		// waits for NetConnection.Connect.Success
-		// _stream gets created
-
 		public function PlayerVideo(element:BasicPlayer, autoplay:Boolean, preload:String, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
 			_autoplay = autoplay;
@@ -51,10 +43,12 @@ package basicplayer {
 			_muted = muted;
 			_timerRate = timerRate;
 
+			_soundTransform = new SoundTransform(_muted ? 0 : _volume);
+
 			_video = new Video();
 
 			_connection = new NetConnection();
-			_connection.client = { onBWDone: function():void{} };
+			_connection.client = { onBWDone: function():void {} };
 			_connection.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler);
 			_connection.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
 			//_connection.connect(null);
@@ -114,11 +108,10 @@ package basicplayer {
 
 		private function getTime():Number {
 			var currentTime:Number = 0;
-			if (_stream != null) {
+			if (_stream != null && !_isEnded) {
 				currentTime = _stream.time;
-				if (_pseudoStreamingEnabled) {
+				if (_pseudoStreamingEnabled)
 					currentTime += _seekOffset;
-				}
 			}
 			return currentTime;
 		}
@@ -129,21 +122,26 @@ package basicplayer {
 
 			switch (event.info.code) {
 
+				case "NetConnection.Connect.Success":
+					connectStream();
+					break;
+
 				case "NetStream.Buffer.Empty":
 					_bufferEmpty = true;
-					if (_isEnded)
+					if (_isEnded) {
 						_element.sendEvent("ended", null);
+						updateTime(getTime());
+					}
 					break;
 
 				case "NetStream.Buffer.Full":
 					_bufferEmpty = false;
 					if (_stream != null)
 						updateBuffer(100 * _stream.bytesLoaded / _stream.bytesTotal, 0);
+					if (_seekPending >= 0)
+						seek(_seekPending);
 					break;
 
-				case "NetConnection.Connect.Success":
-					connectStream();
-					break;
 				case "NetStream.Play.StreamNotFound":
 					Logger.error("Media not found.");
 					_element.sendEvent("error", {message: "Media not found."});
@@ -152,6 +150,10 @@ package basicplayer {
 				// STREAM
 				case "NetStream.Play.Start":
 					_isPaused = false;
+					if (_seekPending >= 0) {
+						seek(_seekPending);
+						break;
+					}
 					if (!_isPreloading)
 						_element.sendEvent("playing", null);
 					_timer.start();
@@ -171,11 +173,13 @@ package basicplayer {
 
 				case "NetStream.Play.Stop":
 					_timer.stop();
-					_isEnded = true;
 					_isPaused = true;
 					_element.sendEvent("paused", null);
-					if (_bufferEmpty)
+					_isEnded = true;
+					if (_bufferEmpty) {
 						_element.sendEvent("ended", null);
+						updateTime(getTime());
+					}
 					break;
 			}
 		}
@@ -195,11 +199,8 @@ package basicplayer {
 
 		private function onMetaDataHandler(info:Object):void {
 			// Only set the duration when we first load the video
-			if (_duration == 0) {
-				_duration = info.duration;
-				_element.sendEvent("duration", {duration: info.duration});
-			}
-			//_framerate = info.framerate;
+			updateDuration(info.duration);
+			// Loger.debug("framerate: "+info.framerate);
 
 			// Set ratio
 			if (!isNaN(info.width) && !isNaN(info.height) && info.width > 0 && info.height > 0)
@@ -221,7 +222,6 @@ package basicplayer {
 			_stream = new NetStream(_connection);
 
 			// explicitly set the sound since it could have come before the connection was made
-			_soundTransform = new SoundTransform(_volume);
 			_stream.soundTransform = _soundTransform;
 
 			// set the buffer to ensure nice playback
@@ -231,9 +231,7 @@ package basicplayer {
 			_stream.addEventListener(NetStatusEvent.NET_STATUS, netStatusHandler); // same event as connection
 			_stream.addEventListener(AsyncErrorEvent.ASYNC_ERROR, asyncErrorHandler);
 
-			var customClient:Object = new Object();
-			customClient.onMetaData = onMetaDataHandler;
-			_stream.client = customClient;
+			_stream.client = {onMetaData: onMetaDataHandler};
 
 			_video.attachNetStream(_stream);
 
@@ -293,7 +291,6 @@ package basicplayer {
 				if (_streamer != "") {
 					rtmpInfo.server = _streamer;
 					rtmpInfo.stream = _mediaUrl;
-
 				}
 				_connection.connect(rtmpInfo.server);
 			} else {
@@ -307,7 +304,7 @@ package basicplayer {
 
 		public override function playMedia():void {
 			if (!_hasStartedPlaying && !_isConnected ) {
-				if( !_playWhenConnected ) {
+				if ( !_playWhenConnected ) {
 					_playWhenConnected = true;
 					loadMedia();
 				}
@@ -363,52 +360,52 @@ package basicplayer {
 		}
 
 		public override function seek(pos:Number):void {
-			if (_stream == null)
+			if (_stream == null || !_isConnected || !_hasStartedPlaying) {
+				_seekPending = pos;
 				return;
+			}
+			_seekPending = -1;
+			_element.sendEvent("buffering", null);
 
 			// Calculate the position of the buffered video
 			var bufferPosition:Number = _stream.bytesLoaded / _stream.bytesTotal * _duration;
 
 			if (_pseudoStreamingEnabled) {
-				_element.sendEvent("buffering", null);
 				// Normal seek if it is in buffer and this is the first seek
 				if (pos < bufferPosition && _seekOffset == 0) {
 					_stream.seek(pos);
-				}
-				else {
+				} else {
 					// Uses server-side pseudo-streaming to seek
 					_stream.play(getCurrentUrl(pos));
 					_seekOffset = pos;
 				}
 			}
 			else {
-				_element.sendEvent("buffering", null);
-				_stream.seek(pos);
+				if (pos < bufferPosition && _seekOffset == 0) {
+					_stream.seek(pos);
+				} else {
+					_seekPending = pos;
+				}
 			}
 
-			if (!_isEnded)
+			if (!_isEnded && _seekPending < 0)
 				updateTime(getTime());
 		}
 
 		public override function setVolume(volume:Number):void {
-			if (_stream != null) {
-				_soundTransform = new SoundTransform(volume);
-				_stream.soundTransform = _soundTransform;
-			}
 			_volume = volume;
-			_muted = (_volume == 0);
+			_soundTransform.volume = _muted ? 0 : _volume;
+			if (_stream != null)
+				_stream.soundTransform = _soundTransform;
 		}
 
 		public override function setMuted(muted:Boolean):void {
 			if (_muted == muted)
 				return;
-			if (muted) {
-				_oldVolume = (_stream == null) ? _oldVolume : _stream.soundTransform.volume;
-				setVolume(0);
-			} else {
-				setVolume(_oldVolume);
-			}
 			_muted = muted;
+			_soundTransform.volume = _muted ? 0 : _volume;
+			if (_stream != null)
+				_stream.soundTransform = _soundTransform;
 		}
 	}
 }

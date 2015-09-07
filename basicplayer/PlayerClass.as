@@ -17,7 +17,7 @@
 		protected var _bufferPercent:Number = 0;
 		protected var _bufferTime:Number = 0;
 
-		protected var _volume:Number = 1;
+		protected var _volume:Number = 0.8;
 		protected var _muted:Boolean = false;
 
 		public function PlayerClass() {

@@ -5,10 +5,14 @@ package {
 	import flash.net.*;
 	import flash.system.*;
 	import flash.text.*;
+	import flash.ui.ContextMenu;
+	import flash.ui.ContextMenuItem;
 
 	import flash.media.Video;
 	import flash.net.NetConnection;
 	import flash.net.NetStream;
+	import flash.net.navigateToURL;
+	import flash.net.URLRequest;
 
 	import flash.utils.Timer;
 	import flash.external.ExternalInterface;
@@ -38,7 +42,6 @@ package {
 		private var _streamer:String = "";
 		private var _enablePseudoStreaming:Boolean;
 		private var _pseudoStreamingStartQueryParam:String;
-		private var _fill:Boolean;
 		private var _defaultVideoRatio:Number = 0;
 		private var _videoRatio:Number = 0;
 
@@ -95,23 +98,32 @@ package {
 				enableLog();
 			loaderInfo.uncaughtErrorEvents.addEventListener(UncaughtErrorEvent.UNCAUGHT_ERROR, errorHandler);
 
+			// Add item to context menu
+			var ctxtMenu:ContextMenu = new ContextMenu();
+			//ctxtMenu.hideBuiltInItems();
+			var bpItem:ContextMenuItem = new ContextMenuItem("Basic Player");
+			ctxtMenu.customItems.push(bpItem);
+			bpItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, goToGitHub);
+			this.contextMenu = ctxtMenu;
+
 			// Get settings
 			_jsCallbackFunction = (params["jscallbackfunction"] != undefined) ? String(params["jscallbackfunction"]) : "";
 			_mediaUrl = (params["file"] != undefined) ? String(params["file"]) : "";
+			_preload = (params["preload"] != undefined) ? params["preload"] : "none";
 			_autoplay = (params["autoplay"] != undefined) ? (String(params["autoplay"]) == "true") : false;
 			_timerRate = (params["timerrate"] != undefined) ? (parseInt(params["timerrate"], 10)) : 250;
 			_enableSmoothing = (params["smoothing"] != undefined) ? (String(params["smoothing"]) == "true") : false;
 			_startVolume = (params["volume"] != undefined) ? (parseFloat(params["volume"])) : 0.8;
 			_startMuted = (params["muted"] != undefined) ?  (String(params["muted"]) == "true") : false;
-			_preload = (params["preload"] != undefined) ? params["preload"] : "none";
 			_enablePseudoStreaming = (params["pseudostreaming"] != undefined) ? (String(params["pseudostreaming"]) == "true") : false;
 			_pseudoStreamingStartQueryParam = (params["pseudostreamstart"] != undefined) ? (String(params["pseudostreamstart"])) : "start";
 			_streamer = (params["flashstreamer"] != undefined) ? (String(params["flashstreamer"])) : "";
-			_defaultVideoRatio = (params["ratio"] != undefined) ? (parseInt(params["ratio"], 10)) : 0;
-			_fill = (params["fill"] != undefined) ? (String(params["fill"]) == "true") : false;
+			_defaultVideoRatio = (params["ratio"] != undefined) ? (parseFloat(params["ratio"])) : 0;
 
 			if (isNaN(_timerRate))
 				_timerRate = 250;
+			if (_startVolume > 1)
+				_startVolume = 1;
 
 			//_autoplay = true;
 			//_mediaUrl  = "http://mediafiles.dts.edu/chapel/mp4/20100609.mp4";
@@ -142,9 +154,12 @@ package {
 					ExternalInterface.addCallback("stop", stopMedia);
 					ExternalInterface.addCallback("seek", seek);
 					ExternalInterface.addCallback("setVolume", setVolume);
+					ExternalInterface.addCallback("getVolume", getVolume);
 					ExternalInterface.addCallback("setMuted", setMuted);
+					ExternalInterface.addCallback("getMuted", getMuted);
 					ExternalInterface.addCallback("enableLog", enableLog);
 					ExternalInterface.addCallback("disableLog", disableLog);
+					ExternalInterface.addCallback("setVideoRatio", setVideoRatio);
 					Logger.debug("JavaScript methods added.");
 					// Fire init method
 					if (jsInitFct) {
@@ -202,7 +217,6 @@ package {
 		}
 
 		private function repositionVideo():void {
-			var fill:Boolean = _fill;
 			var contWidth:Number;
 			var contHeight:Number;
 			if (_isFullScreen) {
@@ -217,8 +231,7 @@ package {
 			Logger.setSize(contWidth, contHeight);
 
 			if (_playerElement is PlayerVideo || _playerElement is PlayerHLS) {
-				if (_isFullScreen)
-					fill = false;
+				var fill:Boolean = false;
 				if (_defaultVideoRatio <= 0 && _videoRatio <= 0) {
 					Logger.debug("Positionning: video's ratio is unknown, using full stage size.");
 					fill = true;
@@ -268,6 +281,10 @@ package {
 
 		public function resizeHandler(event:Event):void {
 			repositionVideo();
+		}
+
+		public function goToGitHub(event:ContextMenuEvent):void {
+			navigateToURL(new URLRequest("https://github.com/UbiCastTeam/basicswfplayer"), "_blank");
 		}
 
 		public function stageFullScreenChanged(event:FullScreenEvent):void {
@@ -330,12 +347,16 @@ package {
 			_playerElement.seek(time);
 		}
 		public function setVolume(volume:Number):void {
-			Logger.debug("volume: " + volume);
 			_playerElement.setVolume(volume);
 		}
+		public function getVolume():Number {
+			return _playerElement.getVolume();
+		}
 		public function setMuted(muted:Boolean):void {
-			Logger.debug("muted: " + muted);
 			_playerElement.setMuted(muted);
+		}
+		public function getMuted():Boolean {
+			return _playerElement.getMuted();
 		}
 		public function setVideoRatio(ratio:Number):void {
 			Logger.debug("setVideoRatio: " + ratio);

@@ -14,22 +14,23 @@
 	import basicplayer.PlayerClass;
 
 	public class PlayerAudio extends PlayerClass {
-		private var _sound:Sound;
 		private var _soundTransform:SoundTransform;
+		private var _sound:Sound;
 		private var _soundChannel:SoundChannel;
 		private var _soundLoaderContext:SoundLoaderContext;
+
+		private var _timer:Timer;
 
 		private var _preMuteVolume:Number = 0;
 		private var _isPaused:Boolean = true;
 		private var _isEnded:Boolean = false;
 		private var _isLoaded:Boolean = false;
+
 		private var _bytesLoaded:Number = 0;
 		private var _bytesTotal:Number = 0;
 		private var _bufferingChanged:Boolean = false;
 
 		private var _playAfterLoading:Boolean = false;
-
-		private var _timer:Timer;
 
 		public function PlayerAudio(element:BasicPlayer, autoplay:Boolean, preload:String, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
@@ -39,11 +40,11 @@
 			_muted = muted;
 			_timerRate = timerRate;
 
+			_soundTransform = new SoundTransform(_muted ? 0 : _volume);
+			_soundLoaderContext = new SoundLoaderContext();
+
 			_timer = new Timer(_timerRate);
 			_timer.addEventListener(TimerEvent.TIMER, timerEventHandler);
-
-			_soundTransform = new SoundTransform(_volume);
-			_soundLoaderContext = new SoundLoaderContext();
 		}
 
 		// events
@@ -75,7 +76,7 @@
 		private function timerEventHandler(e:TimerEvent):void {
 			// calculate duration
 			var duration:Number = Math.round(_sound.length * _sound.bytesTotal / _sound.bytesLoaded / 100) / 10;
-			Logger.debug("bt: "+_sound.bytesTotal+" bl: "+_sound.bytesLoaded);
+			//Logger.debug("bt: "+_sound.bytesTotal+" bl: "+_sound.bytesLoaded);
 			updateDuration(duration);
 
 			updateTime(_soundChannel.position / 1000);
@@ -196,25 +197,18 @@
 
 		public override function setVolume(volume:Number):void {
 			_volume = volume;
-			_soundTransform.volume = volume;
-
+			_soundTransform.volume = _muted ? 0 : _volume;
 			if (_soundChannel != null)
 				_soundChannel.soundTransform = _soundTransform;
-			_muted = (_volume == 0);
 		}
 
 		public override function setMuted(muted:Boolean):void {
-			// ignore if already set
-			if ((muted && _muted) || (!muted && !_muted))
+			if (_muted == muted)
 				return;
-
-			if (muted) {
-				_preMuteVolume = _soundTransform.volume;
-				setVolume(0);
-			} else {
-				setVolume(_preMuteVolume);
-			}
 			_muted = muted;
+			_soundTransform.volume = _muted ? 0 : _volume;
+			if (_soundChannel != null)
+				_soundChannel.soundTransform = _soundTransform;
 		}
 	}
 }
