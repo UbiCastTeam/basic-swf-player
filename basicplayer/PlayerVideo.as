@@ -29,13 +29,14 @@ package basicplayer {
 		private var _isRTMP:Boolean = false;
 		private var _streamer:String = "";
 		private var _isConnected:Boolean = false;
+		private var _isLoading:Boolean = false;
 		private var _playWhenConnected:Boolean = false;
 		private var _hasStartedPlaying:Boolean = false;
 
 		private var _pseudoStreamingEnabled:Boolean = false;
 		private var _pseudoStreamingStartQueryParam:String = "start";
 
-		public function PlayerVideo(element:BasicPlayer, autoplay:Boolean, preload:String, volume:Number, muted:Boolean, timerRate:Number) {
+		public function PlayerVideo(element:BasicPlayer, autoplay:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
 			_autoplay = autoplay;
 			_preload = preload;
@@ -255,6 +256,7 @@ package basicplayer {
 				playMedia();
 				_playWhenConnected = false;
 			}
+			_isLoading = false;
 		}
 
 		// Overriden functions
@@ -270,9 +272,12 @@ package basicplayer {
 			_isRTMP = !!_mediaUrl.match(/^rtmp(s|t|e|te)?\:\/\//) || _streamer != "";
 			_isConnected = false;
 			_hasStartedPlaying = false;
+			if (_preload)
+				loadMedia();
 		}
 
 		public override function loadMedia():void {
+			_isLoading = true;
 			// disconnect existing stream and connection
 			if (_isConnected && _stream) {
 				_stream.pause();
@@ -299,15 +304,14 @@ package basicplayer {
 
 			// in a few moments the "NetConnection.Connect.Success" event will fire
 			// and call createConnection which finishes the "load" sequence
-			_element.sendEvent("buffering", null);
+			_element.sendEvent("buffering", {playing: _playWhenConnected});
 		}
 
 		public override function playMedia():void {
 			if (!_hasStartedPlaying && !_isConnected ) {
-				if ( !_playWhenConnected ) {
-					_playWhenConnected = true;
+				_playWhenConnected = true;
+				if (!_isLoading)
 					loadMedia();
-				}
 				return;
 			}
 
@@ -365,7 +369,7 @@ package basicplayer {
 				return;
 			}
 			_seekPending = -1;
-			_element.sendEvent("buffering", null);
+			_element.sendEvent("buffering", {playing: !_isPaused});
 
 			// Calculate the position of the buffered video
 			var bufferPosition:Number = _stream.bytesLoaded / _stream.bytesTotal * _duration;
@@ -381,11 +385,7 @@ package basicplayer {
 				}
 			}
 			else {
-				if (pos < bufferPosition && _seekOffset == 0) {
-					_stream.seek(pos);
-				} else {
-					_seekPending = pos;
-				}
+				_stream.seek(pos);
 			}
 
 			if (!_isEnded && _seekPending < 0)

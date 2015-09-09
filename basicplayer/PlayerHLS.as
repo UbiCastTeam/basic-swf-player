@@ -14,7 +14,6 @@
 	public class PlayerHLS extends PlayerClass {
 		private var _playqueued:Boolean = false;
 		private var _hls:HLS;
-		private var _url:String;
 		private var _hlsState:String = HLSPlayStates.IDLE;
 		private var _soundTransform:SoundTransform;
 
@@ -22,7 +21,7 @@
 		private var _isPaused:Boolean = true;
 		private var _isEnded:Boolean = false;
 
-		public function PlayerHLS(element:BasicPlayer, autoplay:Boolean, preload:String, volume:Number, muted:Boolean, timerRate:Number) {
+		public function PlayerHLS(element:BasicPlayer, autoplay:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
 			_autoplay = autoplay;
 			_preload = preload;
@@ -75,7 +74,7 @@
 		private function _mediaTimeHandler(event:HLSEvent):void {
 			updateTime(event.mediatime.position);
 			updateDuration(event.mediatime.duration);
-			updateBuffer(0, _currentTime + event.mediatime.buffer + event.mediatime.position);
+			updateBuffer(0, event.mediatime.position + event.mediatime.buffer);
 		}
 
 		private function _stateHandler(event:HLSEvent):void {
@@ -83,11 +82,15 @@
 			//Log.txt("state:"+ _hlsState);
 			switch(event.state) {
 				case HLSPlayStates.IDLE:
+					_isPaused = true;
 					break;
 				case HLSPlayStates.PAUSED_BUFFERING:
-				case HLSPlayStates.PLAYING_BUFFERING:
 					_isPaused = true;
-					_element.sendEvent("buffering", null);
+					_element.sendEvent("buffering", {playing: false});
+					break;
+				case HLSPlayStates.PLAYING_BUFFERING:
+					_isPaused = false;
+					_element.sendEvent("buffering", {playing: true});
 					break;
 				case HLSPlayStates.PLAYING:
 					_isPaused = false;
@@ -108,15 +111,15 @@
 		public override function setSrc(url:String):void{
 			//Log.txt("HLSMediaElement:setSrc:"+url);
 			stopMedia();
-			_url = url;
-			_hls.load(_url);
+			_mediaUrl = url;
+			loadMedia();
 		}
 
 		public override function loadMedia():void{
 			//Log.txt("HLSMediaElement:load");		
-			if (_url) {
-				_element.sendEvent("buffering", null);
-				_hls.load(_url);
+			if (_mediaUrl) {
+				_element.sendEvent("buffering", {playing: !_isPaused});
+				_hls.load(_mediaUrl);
 			}
 		}
 

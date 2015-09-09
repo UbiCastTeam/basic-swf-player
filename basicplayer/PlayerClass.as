@@ -9,8 +9,8 @@
 		protected var _timerRate:Number = 0;
 
 		protected var _mediaUrl:String = "";
-		protected var _preload:String = "";
-		protected var _autoplay:Boolean = true;
+		protected var _preload:Boolean = false;
+		protected var _autoplay:Boolean = false;
 
 		protected var _currentTime:Number = 0;
 		protected var _duration:Number = 0;

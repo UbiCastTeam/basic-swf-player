@@ -31,7 +31,7 @@ package {
 		private var _mediaUrl:String;
 		private var _jsCallbackFunction:String;
 		private var _autoplay:Boolean;
-		private var _preload:String;
+		private var _preload:Boolean;
 		private var _video:DisplayObject;
 		private var _timerRate:Number;
 		private var _enableSmoothing:Boolean;
@@ -109,7 +109,7 @@ package {
 			// Get settings
 			_jsCallbackFunction = (params["jscallbackfunction"] != undefined) ? String(params["jscallbackfunction"]) : "";
 			_mediaUrl = (params["file"] != undefined) ? String(params["file"]) : "";
-			_preload = (params["preload"] != undefined) ? params["preload"] : "none";
+			_preload = (params["preload"] != undefined) ? (String(params["preload"]) == "true") : false;
 			_autoplay = (params["autoplay"] != undefined) ? (String(params["autoplay"]) == "true") : false;
 			_timerRate = (params["timerrate"] != undefined) ? (parseInt(params["timerrate"], 10)) : 250;
 			_enableSmoothing = (params["smoothing"] != undefined) ? (String(params["smoothing"]) == "true") : false;
@@ -204,11 +204,8 @@ package {
 			// Load media
 			if (_mediaUrl != "")
 				_playerElement.setSrc(_mediaUrl);
-			if (_preload != "none" || _autoplay) {
-				_playerElement.loadMedia();
-				if (_autoplay)
-					_playerElement.playMedia();
-			}
+			if (_autoplay)
+				_playerElement.playMedia();
 
 			// Bind events
 			stage.addEventListener(Event.RESIZE, resizeHandler);

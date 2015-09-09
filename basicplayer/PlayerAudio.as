@@ -21,9 +21,9 @@
 
 		private var _timer:Timer;
 
-		private var _preMuteVolume:Number = 0;
 		private var _isPaused:Boolean = true;
 		private var _isEnded:Boolean = false;
+		private var _isLoading:Boolean = false;
 		private var _isLoaded:Boolean = false;
 
 		private var _bytesLoaded:Number = 0;
@@ -32,7 +32,7 @@
 
 		private var _playAfterLoading:Boolean = false;
 
-		public function PlayerAudio(element:BasicPlayer, autoplay:Boolean, preload:String, volume:Number, muted:Boolean, timerRate:Number) {
+		public function PlayerAudio(element:BasicPlayer, autoplay:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
 			_autoplay = autoplay;
 			_preload = preload;
@@ -114,12 +114,15 @@
 		public override function setSrc(url:String):void {
 			_mediaUrl = url;
 			_isLoaded = false;
+			if (_preload)
+				loadMedia();
 		}
 
 		public override function loadMedia():void {
 			if (_mediaUrl == "")
 				return;
 
+			_isLoading = true;
 			if (_sound) {
 				if (_sound.hasEventListener(ProgressEvent.PROGRESS)) {
 					_sound.removeEventListener(ProgressEvent.PROGRESS, progressHandler);
@@ -145,12 +148,14 @@
 				_playAfterLoading = false;
 				playMedia();
 			}
+			_isLoading = false;
 		}
 
 		public override function playMedia():void {
 			if (!_isLoaded) {
 				_playAfterLoading = true;
-				loadMedia();
+				if (!_isLoading)
+					loadMedia();
 				return;
 			}
 			_timer.stop();
@@ -186,7 +191,7 @@
 
 		public override function seek(pos:Number):void {
 			_timer.stop();
-			_element.sendEvent("buffering", null);
+			_element.sendEvent("buffering", {playing: true});
 			updateTime(pos);
 			_soundChannel.stop();
 			_soundChannel = _sound.play(_currentTime * 1000, 0, _soundTransform);
