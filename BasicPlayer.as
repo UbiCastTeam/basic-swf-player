@@ -149,10 +149,10 @@ package {
 			if (ExternalInterface.available) {
 				try {
 					// Add JavaScript methods on object
-					ExternalInterface.addCallback("play", playMedia);
-					ExternalInterface.addCallback("pause", pauseMedia);
-					ExternalInterface.addCallback("stop", stopMedia);
-					ExternalInterface.addCallback("seek", seek);
+					ExternalInterface.addCallback("playMedia", playMedia);
+					ExternalInterface.addCallback("pauseMedia", pauseMedia);
+					ExternalInterface.addCallback("stopMedia", stopMedia);
+					ExternalInterface.addCallback("seekMedia", seek);
 					ExternalInterface.addCallback("setVolume", setVolume);
 					ExternalInterface.addCallback("getVolume", getVolume);
 					ExternalInterface.addCallback("setMuted", setMuted);
