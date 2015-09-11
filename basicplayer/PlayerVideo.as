@@ -101,10 +101,11 @@ package basicplayer {
 		}
 
 		private function timerHandler(e:TimerEvent):void {
-			if (_stream != null) {
-				updateTime(getTime());
-				updateBuffer(100 * _stream.bytesLoaded / _stream.bytesTotal, 0);
-			}
+			if (_stream == null)
+				return;
+			updateTime(getTime());
+			// TODO: if _stream.bytesTotal is increasing, send something else as buffer percent
+			updateBuffer(100 * _stream.bytesLoaded / _stream.bytesTotal, 0);
 		}
 
 		private function getTime():Number {
