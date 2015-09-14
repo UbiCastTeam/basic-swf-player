@@ -26,7 +26,7 @@ package basicplayer {
 		private var _bufferEmpty:Boolean = false;
 		private var _seekOffset:Number = 0;
 
-		private var _isRTMP:Boolean = false;
+		private var _rtmpInfo:Object = null;
 		private var _streamer:String = "";
 		private var _isConnected:Boolean = false;
 		private var _isLoading:Boolean = false;
@@ -70,25 +70,6 @@ package basicplayer {
 			_pseudoStreamingStartQueryParam = pseudoStreamingStartQueryParam;
 		}
 
-		private function parseRTMP(url:String):Object {
-			var match:Array = url.match(/(.*)\/((flv|mp4|mp3):.*)/);
-			var rtmpInfo:Object = {
-				server: null,
-				stream: null
-			};
-
-			if (match) {
-				rtmpInfo.server = match[1];
-				rtmpInfo.stream = match[2];
-			}
-			else {
-				rtmpInfo.server = url.replace(/\/[^\/]+$/,"/");
-				rtmpInfo.stream = url.split("/").pop();
-			}
-			Logger.debug("parseRTMP - server: " + rtmpInfo.server + " stream: " + rtmpInfo.stream);
-			return rtmpInfo;
-		}
-
 		private function getCurrentUrl(pos:Number):String {
 			var url:String = _mediaUrl;
 			if (_pseudoStreamingEnabled) {
@@ -105,7 +86,8 @@ package basicplayer {
 				return;
 			updateTime(getTime());
 			// TODO: if _stream.bytesTotal is increasing, send something else as buffer percent
-			updateBuffer(100 * _stream.bytesLoaded / _stream.bytesTotal, 0);
+			if (_stream.bytesTotal > 0)
+				updateBuffer(100 * _stream.bytesLoaded / _stream.bytesTotal, 0);
 		}
 
 		private function getTime():Number {
@@ -138,18 +120,12 @@ package basicplayer {
 
 				case "NetStream.Buffer.Full":
 					_bufferEmpty = false;
-					if (_stream != null)
+					if (_stream != null && _stream.bytesTotal > 0)
 						updateBuffer(100 * _stream.bytesLoaded / _stream.bytesTotal, 0);
 					if (_seekPending >= 0)
 						seek(_seekPending);
 					break;
 
-				case "NetStream.Play.StreamNotFound":
-					Logger.error("Media not found.");
-					_element.sendEvent("error", {message: "Media not found."});
-					break;
-
-				// STREAM
 				case "NetStream.Play.Start":
 					_isPaused = false;
 					if (_seekPending >= 0) {
@@ -183,20 +159,28 @@ package basicplayer {
 						updateTime(getTime());
 					}
 					break;
+
+				case "NetStream.Failed":
+					_element.sendEvent("error", {message: "Stream failure (NetStream.Failed)."});
+					break;
+
+				case "NetStream.Play.FileStructureInvalid":
+					_element.sendEvent("error", {message: "Invalid media file structure (NetStream.Play.FileStructureInvalid)."});
+					break;
+
+				case "NetStream.Play.StreamNotFound":
+					_element.sendEvent("error", {message: "Media not found."});
+					break;
 			}
 		}
 
 		private function securityErrorHandler(event:SecurityErrorEvent):void {
-			var msg:String = "securityErrorHandler: "+event+".";
-			Logger.error(msg);
-			_element.sendEvent("error", {message: msg});
+			_element.sendEvent("error", {message: "securityErrorHandler: "+event+"."});
 		}
 
 		private function asyncErrorHandler(event:AsyncErrorEvent):void {
 			// Ignore AsyncErrorEvent events?
-			var msg:String = "asyncErrorHandler: "+event+".";
-			Logger.error(msg);
-			_element.sendEvent("error", {message: msg});
+			_element.sendEvent("error", {message: "asyncErrorHandler: "+event+"."});
 		}
 
 		private function onMetaDataHandler(info:Object):void {
@@ -214,9 +198,6 @@ package basicplayer {
 				_stream.pause();
 				_isPaused = true;
 				_isPreloading = false;
-
-				updateTime(getTime());
-				updateBuffer(100 * _stream.bytesLoaded / _stream.bytesTotal, 0);
 			}
 		}
 
@@ -270,7 +251,32 @@ package basicplayer {
 
 			_duration = 0;
 			_mediaUrl = url;
-			_isRTMP = !!_mediaUrl.match(/^rtmp(s|t|e|te)?\:\/\//) || _streamer != "";
+
+			_rtmpInfo = null;
+			if (_streamer != "") {
+				_rtmpInfo = {
+					server: _streamer,
+					stream: _mediaUrl
+				};
+			} else if (_mediaUrl.match(/^rtmp(s|t|e|te)?\:\/\//)) {
+				// Parse media url
+				var match:Array = _mediaUrl.match(/(.*)\/((flv|mp4|mp3):.*)/);
+				if (match) {
+					_rtmpInfo = {
+						server: match[1],
+						stream: match[2]
+					};
+				}
+				else {
+					_rtmpInfo = {
+						server: _mediaUrl.replace(/\/[^\/]+$/,"/"),
+						stream: _mediaUrl.split("/").pop()
+					};
+				}
+			}
+			if (_rtmpInfo != null)
+				Logger.debug("RTMP - server: " + _rtmpInfo.server + " stream: " + _rtmpInfo.stream);
+
 			_isConnected = false;
 			_hasStartedPlaying = false;
 			if (_preload)
@@ -292,16 +298,10 @@ package basicplayer {
 			_bufferEmpty = false;
 
 			// start new connection
-			if (_isRTMP) {
-				var rtmpInfo:Object = parseRTMP(_mediaUrl);
-				if (_streamer != "") {
-					rtmpInfo.server = _streamer;
-					rtmpInfo.stream = _mediaUrl;
-				}
-				_connection.connect(rtmpInfo.server);
-			} else {
+			if (_rtmpInfo != null)
+				_connection.connect(_rtmpInfo.server);
+			else
 				_connection.connect(null);
-			}
 
 			// in a few moments the "NetConnection.Connect.Success" event will fire
 			// and call createConnection which finishes the "load" sequence
@@ -328,12 +328,10 @@ package basicplayer {
 					_element.sendEvent("playing", null);
 				}
 			} else {
-				if (_isRTMP) {
-					var rtmpInfo:Object = parseRTMP(_mediaUrl);
-					_stream.play(rtmpInfo.stream);
-				} else {
+				if (_rtmpInfo != null)
+					_stream.play(_rtmpInfo.stream);
+				else
 					_stream.play(getCurrentUrl(0));
-				}
 				_timer.start();
 				_isPaused = false;
 				_hasStartedPlaying = true;

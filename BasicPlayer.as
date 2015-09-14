@@ -291,17 +291,16 @@ package {
 		}
 
 		public function errorHandler(event:UncaughtErrorEvent):void {
-			if (event.error is Error || event.error is ErrorEvent) {
-				var msg:String = "Unhandled error: "+event.error+".";
-				Logger.error(msg);
-				sendEvent("error", "{message:'"+msg+"'}");
-			}
+			if (event.error is Error || event.error is ErrorEvent)
+				sendEvent("error", {message: "Unhandled error: "+event.error+"."});
 			// suppress error dialog
 			event.preventDefault();
 		}
 
 		// SEND events to JavaScript
 		public function sendEvent(eventName:String, eventData:Object):void {
+			if (eventName == "error")
+				Logger.error(eventData.message);
 			if (!ExternalInterface.available)
 				return;
 			var jsfct:String = _jsCallbackFunction+"('"+(ExternalInterface.objectID != null ? ExternalInterface.objectID : "no_object_id")+"','"+eventName+"'";
