@@ -32,7 +32,7 @@
 		}
 
 		protected function updateDuration(duration:Number):void {
-			if (!isNaN(duration) && duration > 0 && duration != _duration) {
+			if (!isNaN(duration) && duration > 0 && _duration != duration) {
 				_duration = duration;
 				_element.sendEvent("duration", {duration: _duration});
 			}

@@ -75,8 +75,10 @@
 
 		private function _mediaTimeHandler(event:HLSEvent):void {
 			updateTime(event.mediatime.position);
-			updateDuration(event.mediatime.duration);
-			updateBuffer(0, event.mediatime.position + event.mediatime.buffer);
+			if (!_isLive) {
+				updateDuration(event.mediatime.duration);
+				updateBuffer(0, event.mediatime.position + event.mediatime.buffer);
+			}
 		}
 
 		private function _stateHandler(event:HLSEvent):void {
@@ -85,6 +87,7 @@
 			switch (event.state) {
 				case HLSPlayStates.IDLE:
 					_isPaused = true;
+					_element.sendEvent("paused", null);
 					break;
 				case HLSPlayStates.PAUSED_BUFFERING:
 					_isPaused = true;
@@ -117,7 +120,7 @@
 		}
 
 		public override function loadMedia():void{
-			if (_mediaUrl) {
+			if (_mediaUrl != "") {
 				_element.sendEvent("buffering", {playing: !_isPaused});
 				_hls.load(_mediaUrl);
 			}
@@ -150,7 +153,13 @@
 		public override function seek(pos:Number):void{
 			if (!_isManifestLoaded)
 				return;
-			_hls.stream.seek(pos);
+			if (_isLive && pos < 0) {
+				// Reset buffer
+				_hls.stream.close();
+				_hls.load(_mediaUrl);
+			}
+			else
+				_hls.stream.seek(pos);
 		}
 
 		public override function setVolume(volume:Number):void {

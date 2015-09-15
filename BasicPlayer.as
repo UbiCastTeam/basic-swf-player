@@ -113,7 +113,7 @@ package {
 			_preload = (params["preload"] != undefined) ? (String(params["preload"]) == "true") : false;
 			_autoplay = (params["autoplay"] != undefined) ? (String(params["autoplay"]) == "true") : false;
 			_timerRate = (params["timerrate"] != undefined) ? (parseInt(params["timerrate"], 10)) : 250;
-			_enableSmoothing = (params["smoothing"] != undefined) ? (String(params["smoothing"]) == "true") : false;
+			_enableSmoothing = (params["smoothing"] != undefined) ? (String(params["smoothing"]) == "true") : true;
 			_startVolume = (params["volume"] != undefined) ? (parseFloat(params["volume"])) : 0.8;
 			_startMuted = (params["muted"] != undefined) ?  (String(params["muted"]) == "true") : false;
 			_enablePseudoStreaming = (params["pseudostreaming"] != undefined) ? (String(params["pseudostreaming"]) == "true") : false;
@@ -362,6 +362,7 @@ package {
 				return;
 			_videoRatio = ratio;
 			repositionVideo();
+			sendEvent("ratio", {ratio: ratio});
 		}
 		// END: external interface
 	}
