@@ -21,9 +21,10 @@
 		private var _isPaused:Boolean = true;
 		private var _isEnded:Boolean = false;
 
-		public function PlayerHLS(element:BasicPlayer, autoplay:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
+		public function PlayerHLS(element:BasicPlayer, autoplay:Boolean, isLive:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
 			_autoplay = autoplay;
+			_isLive = isLive;
 			_preload = preload;
 			_volume = volume;
 			_muted = muted;
@@ -48,10 +49,11 @@
 			_isEnded = true;
 			_isPaused = true;
 			_element.sendEvent("paused", null);
+			_element.sendEvent("ended", null);
 		}
 
 		private function _errorHandler(event:HLSEvent):void {
-			Logger.error(event.toString());
+			_element.sendEvent("error", {message: "Playback error: "+event+"."});
 		}
 
 		private function _manifestHandler(event:HLSEvent):void {
@@ -80,7 +82,7 @@
 		private function _stateHandler(event:HLSEvent):void {
 			_hlsState = event.state;
 			//Log.txt("state:"+ _hlsState);
-			switch(event.state) {
+			switch (event.state) {
 				case HLSPlayStates.IDLE:
 					_isPaused = true;
 					break;
@@ -109,14 +111,12 @@
 		// Overriden functions
 		// -------------------------------------------------------------------
 		public override function setSrc(url:String):void{
-			//Log.txt("HLSMediaElement:setSrc:"+url);
 			stopMedia();
 			_mediaUrl = url;
 			loadMedia();
 		}
 
 		public override function loadMedia():void{
-			//Log.txt("HLSMediaElement:load");		
 			if (_mediaUrl) {
 				_element.sendEvent("buffering", {playing: !_isPaused});
 				_hls.load(_mediaUrl);
@@ -124,7 +124,6 @@
 		}
 
 		public override function playMedia():void {
-			//Log.txt("HLSMediaElement:play");
 			if (!_isManifestLoaded) {
 				_playqueued = true;
 				return;
@@ -138,7 +137,6 @@
 		public override function pauseMedia():void {
 			if (!_isManifestLoaded)
 				return;
-			//Log.txt("HLSMediaElement:pause");
 			_hls.stream.pause();
 		}
 

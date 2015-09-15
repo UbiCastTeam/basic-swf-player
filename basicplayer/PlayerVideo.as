@@ -18,7 +18,6 @@ package basicplayer {
 
 		private var _timer:Timer;
 
-		private var _isPreloading:Boolean = false;
 		private var _isPaused:Boolean = true;
 		private var _isEnded:Boolean = false;
 
@@ -29,16 +28,19 @@ package basicplayer {
 		private var _rtmpInfo:Object = null;
 		private var _streamer:String = "";
 		private var _isConnected:Boolean = false;
+		private var _isPreloading:Boolean = false;
 		private var _isLoading:Boolean = false;
+		private var _isResetting:Boolean = false;
 		private var _playWhenConnected:Boolean = false;
 		private var _hasStartedPlaying:Boolean = false;
 
 		private var _pseudoStreamingEnabled:Boolean = false;
 		private var _pseudoStreamingStartQueryParam:String = "start";
 
-		public function PlayerVideo(element:BasicPlayer, autoplay:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
+		public function PlayerVideo(element:BasicPlayer, autoplay:Boolean, isLive:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
 			_autoplay = autoplay;
+			_isLive = isLive;
 			_preload = preload;
 			_volume = volume;
 			_muted = muted;
@@ -54,8 +56,10 @@ package basicplayer {
 			_connection.addEventListener(SecurityErrorEvent.SECURITY_ERROR, securityErrorHandler);
 			//_connection.connect(null);
 
-			_timer = new Timer(_timerRate);
-			_timer.addEventListener("timer", timerHandler);
+			if (!_isLive) {
+				_timer = new Timer(_timerRate);
+				_timer.addEventListener("timer", timerHandler);
+			}
 		}
 
 		public function setStreamer(streamer:String):void {
@@ -127,14 +131,20 @@ package basicplayer {
 					break;
 
 				case "NetStream.Play.Start":
+					if (_isPreloading) {
+						_isPreloading = false;
+						_stream.pause();
+						break;
+					}
+					_isResetting = false;
 					_isPaused = false;
 					if (_seekPending >= 0) {
 						seek(_seekPending);
 						break;
 					}
-					if (!_isPreloading)
-						_element.sendEvent("playing", null);
-					_timer.start();
+					_element.sendEvent("playing", null);
+					if (_timer != null)
+						_timer.start();
 					break;
 
 				case "NetStream.Seek.Notify":
@@ -150,13 +160,18 @@ package basicplayer {
 					break;
 
 				case "NetStream.Play.Stop":
-					_timer.stop();
+					if (_isResetting)
+						break;
+					if (_timer != null)
+						_timer.stop();
 					_isPaused = true;
 					_element.sendEvent("paused", null);
-					_isEnded = true;
-					if (_bufferEmpty) {
-						_element.sendEvent("ended", null);
-						updateTime(getTime());
+					if (!_isLive) {
+						_isEnded = true;
+						if (_bufferEmpty) {
+							_element.sendEvent("ended", null);
+							updateTime(getTime());
+						}
 					}
 					break;
 
@@ -186,19 +201,14 @@ package basicplayer {
 		private function onMetaDataHandler(info:Object):void {
 			// Only set the duration when we first load the video
 			updateDuration(info.duration);
-			// Loger.debug("framerate: "+info.framerate);
+			//Logger.debug("Metadata:");
+			//for (var id:String in info) { Logger.debug("    "+id+": "+info[id]); }
 
 			// Set ratio
 			if (!isNaN(info.width) && !isNaN(info.height) && info.width > 0 && info.height > 0)
 				_element.setVideoRatio(info.width / info.height);
 			else
 				_element.setVideoRatio(0);
-
-			if (_isPreloading) {
-				_stream.pause();
-				_isPaused = true;
-				_isPreloading = false;
-			}
 		}
 
 		private function connectStream():void {
@@ -220,15 +230,15 @@ package basicplayer {
 
 			// start downloading without playing (based on preload and play() hasn't been called)
 			// I wish flash had a load() command to make this less akward
-			if (_preload != "none" && !_playWhenConnected) {
+			if (_preload && !_playWhenConnected) {
 				_isPaused = true;
-				//stream.bufferTime = 20;
-				_stream.play(getCurrentUrl(0), 0, 0);
-				_stream.pause();
-
 				_isPreloading = true;
+				//_stream.bufferTime = 20;
+				if (_rtmpInfo != null)
+					_stream.play(_rtmpInfo.stream);
+				else
+					_stream.play(getCurrentUrl(0));
 
-				//_stream.pause();
 				//_element.sendEvent("paused", null); // have to send this because the "playing" event gets sent via event handlers
 			}
 
@@ -247,11 +257,17 @@ package basicplayer {
 			if (_isConnected && _stream != null) {
 				// stop and restart
 				_stream.pause();
+				_stream.close();
+				_connection.close();
 			}
-
+			_isConnected = false;
+			_isPreloading = false;
+			_hasStartedPlaying = false;
+			_isEnded = false;
+			_bufferEmpty = false;
 			_duration = 0;
-			_mediaUrl = url;
 
+			_mediaUrl = url;
 			_rtmpInfo = null;
 			if (_streamer != "") {
 				_rtmpInfo = {
@@ -277,25 +293,12 @@ package basicplayer {
 			if (_rtmpInfo != null)
 				Logger.debug("RTMP - server: " + _rtmpInfo.server + " stream: " + _rtmpInfo.stream);
 
-			_isConnected = false;
-			_hasStartedPlaying = false;
 			if (_preload)
 				loadMedia();
 		}
 
 		public override function loadMedia():void {
 			_isLoading = true;
-			// disconnect existing stream and connection
-			if (_isConnected && _stream) {
-				_stream.pause();
-				_stream.close();
-				_connection.close();
-			}
-			_isConnected = false;
-			_isPreloading = false;
-
-			_isEnded = false;
-			_bufferEmpty = false;
 
 			// start new connection
 			if (_rtmpInfo != null)
@@ -315,41 +318,43 @@ package basicplayer {
 					loadMedia();
 				return;
 			}
+			if (_hasStartedPlaying && !_isPaused)
+				return;
 
-			if (_hasStartedPlaying) {
-				if (_isPaused) {
-					if (_isEnded) {
-						seek(0);
-						_isEnded = false;
-					}
-					_stream.resume();
-					_timer.start();
-					_isPaused = false;
-					_element.sendEvent("playing", null);
-				}
-			} else {
+			if (!_hasStartedPlaying || _isLive) {
+				// resume is not working on live streams
+				if (_hasStartedPlaying)
+					_isResetting = true;
 				if (_rtmpInfo != null)
 					_stream.play(_rtmpInfo.stream);
 				else
 					_stream.play(getCurrentUrl(0));
-				_timer.start();
-				_isPaused = false;
-				_hasStartedPlaying = true;
-
-				// don't toss play/playing events here, because we haven't sent a
-				// canplay / loadeddata event yet. that'll be handled in the next
-				// event listener
+			} else {
+				if (_isEnded) {
+					seek(0);
+					_isEnded = false;
+				}
+				_stream.resume();
 			}
+
+			if (_timer != null)
+				_timer.start();
+			_isPaused = false;
+			_hasStartedPlaying = true;
+			_element.sendEvent("buffering", {playing: true});
 		}
 
 		public override function pauseMedia():void {
 			if (_stream == null)
 				return;
 
-			if (_stream.bytesLoaded == _stream.bytesTotal)
+			if (_timer != null && _stream.bytesLoaded == _stream.bytesTotal)
 				_timer.stop();
 
-			_stream.pause();
+			if (_isLive)
+				_stream.close();
+			else
+				_stream.pause();
 			_isPaused = true;
 			_element.sendEvent("paused", null);
 		}

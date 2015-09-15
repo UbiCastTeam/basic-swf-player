@@ -10,6 +10,7 @@
 
 		protected var _mediaUrl:String = "";
 		protected var _preload:Boolean = false;
+		protected var _isLive:Boolean = false;
 		protected var _autoplay:Boolean = false;
 
 		protected var _currentTime:Number = 0;

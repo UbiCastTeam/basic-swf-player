@@ -32,9 +32,10 @@
 
 		private var _playAfterLoading:Boolean = false;
 
-		public function PlayerAudio(element:BasicPlayer, autoplay:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
+		public function PlayerAudio(element:BasicPlayer, autoplay:Boolean, isLive:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
 			_autoplay = autoplay;
+			_isLive = isLive;
 			_preload = preload;
 			_volume = volume;
 			_muted = muted;
