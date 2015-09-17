@@ -127,21 +127,16 @@ package {
 			if (_startVolume > 1)
 				_startVolume = 1;
 
-			//_autoplay = true;
-			//_mediaUrl  = "http://mediafiles.dts.edu/chapel/mp4/20100609.mp4";
-			//_mediaUrl  = "../media/Parades-PastLives.mp3";
-			//_mediaUrl  = "../media/echo-hereweare.mp4";
-
-			//_mediaUrl = "http://video.ted.com/talks/podcast/AlGore_2006_480.mp4";
-			//_mediaUrl = "rtmp://stream2.france24.yacast.net/france24_live/en/f24_liveen";
-
-			Logger.debug("stage: " + stage.stageWidth + "x" + stage.stageHeight);
-			Logger.debug("file: " + _mediaUrl);
-			Logger.debug("autoplay: " + _autoplay.toString());
-			Logger.debug("preload: " + _preload.toString());
-			Logger.debug("smoothing: " + _enableSmoothing.toString());
-			Logger.debug("timerrate: " + _timerRate.toString());
-			Logger.debug("displayState: " +(stage.hasOwnProperty("displayState")).toString());
+			if (debug && params["displayinfo"] != undefined && String(params["displayinfo"]) == "true") {
+				Logger.debug("stage: " + stage.stageWidth + "x" + stage.stageHeight);
+				Logger.debug("file: " + _mediaUrl);
+				Logger.debug("streamer: " + _streamer);
+				Logger.debug("autoplay: " + _autoplay.toString());
+				Logger.debug("preload: " + _preload.toString());
+				Logger.debug("smoothing: " + _enableSmoothing.toString());
+				Logger.debug("timerrate: " + _timerRate.toString());
+				Logger.debug("displayState: " +(stage.hasOwnProperty("displayState")).toString());
+			}
 
 			// Attach javascript
 			Logger.debug("ExternalInterface.available: " + ExternalInterface.available.toString());

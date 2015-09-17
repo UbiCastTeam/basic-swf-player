@@ -74,6 +74,10 @@
 			} catch (err:Error) {}
 		}
 
+		private function errorHandler(event:IOErrorEvent):void {
+			_element.sendEvent("error", {message: "IOError: "+event.text+".\nThe resource is unavailable or unreachable."});
+		}
+
 		private function timerEventHandler(e:TimerEvent):void {
 			// calculate duration
 			var duration:Number = Math.round(_sound.length * _sound.bytesTotal / _sound.bytesLoaded / 100) / 10;
@@ -125,21 +129,21 @@
 
 			_isLoading = true;
 			if (_sound) {
-				if (_sound.hasEventListener(ProgressEvent.PROGRESS)) {
+				if (_sound.hasEventListener(IOErrorEvent.IO_ERROR))
+					_sound.removeEventListener(IOErrorEvent.IO_ERROR, errorHandler);
+				if (_sound.hasEventListener(ProgressEvent.PROGRESS))
 					_sound.removeEventListener(ProgressEvent.PROGRESS, progressHandler);
-				}
-				if (_sound.hasEventListener(Event.ID3)) {
+				if (_sound.hasEventListener(Event.ID3))
 					_sound.removeEventListener(Event.ID3, id3Handler);
-				}
 				try {
 					_sound.close();
 				} catch (err:Error) {}
 			}
 
 			_sound = new Sound();
-			//sound.addEventListener(IOErrorEvent.IO_ERROR,errorHandler);
-			_sound.addEventListener(ProgressEvent.PROGRESS,progressHandler);
-			_sound.addEventListener(Event.ID3,id3Handler);
+			_sound.addEventListener(IOErrorEvent.IO_ERROR, errorHandler);
+			_sound.addEventListener(ProgressEvent.PROGRESS, progressHandler);
+			_sound.addEventListener(Event.ID3, id3Handler);
 			_sound.load(new URLRequest(_mediaUrl));
 			updateTime(0);
 

@@ -41,7 +41,7 @@ package basicplayer {
 		public static function toJSON(obj:Object):String {
 			var result:String = "";
 			if (obj is String) {
-				result = "'"+obj.toString().replace(/'/g, "’")+"'"; //"
+				result = "'"+(obj.toString().replace(/\n/g, "\\\\n").replace(/'/g, "’"))+"'"; //"
 			} else if (obj is Boolean) {
 				result = obj.toString();
 			} else if (obj is Number) {
