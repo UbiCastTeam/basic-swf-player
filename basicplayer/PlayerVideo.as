@@ -78,10 +78,10 @@ package basicplayer {
 		private function getCurrentUrl(pos:Number):String {
 			var url:String = _mediaUrl;
 			if (_pseudoStreamingEnabled) {
-				if (url.indexOf('?') > -1)
-					url += '&' + _pseudoStreamingStartQueryParam + '=' + pos;
+				if (url.indexOf("?") > -1)
+					url += "&" + _pseudoStreamingStartQueryParam + "=" + pos;
 				else
-					url += '?' + _pseudoStreamingStartQueryParam + '=' + pos;
+					url += "?" + _pseudoStreamingStartQueryParam + "=" + pos;
 			}
 			return url;
 		}

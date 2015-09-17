@@ -50,27 +50,27 @@
 		}
 
 		// events
-		private function progressHandler(e:ProgressEvent):void {
-			_bytesLoaded = e.bytesLoaded;
-			_bytesTotal = e.bytesTotal;
+		private function progressHandler(event:ProgressEvent):void {
+			_bytesLoaded = event.bytesLoaded;
+			_bytesTotal = event.bytesTotal;
 			// this happens too much to send every time
 			// so now we just trigger a flag and send with the timer
 			_bufferingChanged = true;
 		}
 
-		private function id3Handler(e:Event):void {
+		private function id3Handler(event:Event):void {
 			//sendEvent(MediaEvent.LOADEDMETADATA);
 			try {
 				var id3:ID3Info = _sound.id3;
 				var obj:Object = {
-					type:'id3',
-					album:id3.album,
-					artist:id3.artist,
-					comment:id3.comment,
-					genre:id3.genre,
-					songName:id3.songName,
-					track:id3.track,
-					year:id3.year
+					type: "id3",
+					album: id3.album,
+					artist: id3.artist,
+					comment: id3.comment,
+					genre: id3.genre,
+					songName: id3.songName,
+					track: id3.track,
+					year: id3.year
 				};
 			} catch (err:Error) {}
 		}
@@ -80,7 +80,7 @@
 			_encounteredError = true;
 		}
 
-		private function timerEventHandler(e:TimerEvent):void {
+		private function timerEventHandler(event:TimerEvent):void {
 			// calculate duration
 			var duration:Number = Math.round(_sound.length * _sound.bytesTotal / _sound.bytesLoaded / 100) / 10;
 			//Logger.debug("bt: "+_sound.bytesTotal+" bl: "+_sound.bytesLoaded);

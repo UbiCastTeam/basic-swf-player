@@ -21,6 +21,8 @@
 		private var _isPaused:Boolean = true;
 		private var _isEnded:Boolean = false;
 
+		private var _encounteredError:Boolean = false;
+
 		public function PlayerHLS(element:BasicPlayer, autoplay:Boolean, isLive:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
 			_autoplay = autoplay;
@@ -53,7 +55,13 @@
 		}
 
 		private function _errorHandler(event:HLSEvent):void {
-			_element.sendEvent("error", {message: "Playback error: "+event+"."});
+			var msg:String = event.error.toString();
+			if (msg.indexOf("Cannot load M3U8") != -1)
+				msg += "\nThe resource is unavailable or unreachable.";
+			else
+				msg = "Playback error: "+msg;
+			_element.sendEvent("error", {message: msg});
+			_encounteredError = true;
 		}
 
 		private function _manifestHandler(event:HLSEvent):void {
@@ -120,15 +128,18 @@
 		}
 
 		public override function loadMedia():void{
-			if (_mediaUrl != "") {
+			if (_mediaUrl == "")
+				return;
+			if (!_encounteredError)
 				_element.sendEvent("buffering", {playing: !_isPaused});
-				_hls.load(_mediaUrl);
-			}
+			_hls.load(_mediaUrl);
 		}
 
 		public override function playMedia():void {
 			if (!_isManifestLoaded) {
 				_playqueued = true;
+				if (!_encounteredError)
+					_element.sendEvent("buffering", {playing: true});
 				return;
 			}
 			if (_hlsState == HLSPlayStates.PAUSED || _hlsState == HLSPlayStates.PAUSED_BUFFERING)
