@@ -150,7 +150,7 @@
 			_element.sendEvent("stopped", null);
 		}
 
-		public override function seek(pos:Number):void{
+		public override function seekMedia(pos:Number):void{
 			if (!_isManifestLoaded)
 				return;
 			if (_isLive && pos < 0) {

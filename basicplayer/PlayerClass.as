@@ -94,7 +94,7 @@
 
 		public function stopMedia():void { }
 
-		public function seek(pos:Number):void { }
+		public function seekMedia(pos:Number):void { }
 
 		public function setSrc(url:String):void { }
 

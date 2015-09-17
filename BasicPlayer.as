@@ -149,7 +149,7 @@ package {
 					ExternalInterface.addCallback("playMedia", playMedia);
 					ExternalInterface.addCallback("pauseMedia", pauseMedia);
 					ExternalInterface.addCallback("stopMedia", stopMedia);
-					ExternalInterface.addCallback("seekMedia", seek);
+					ExternalInterface.addCallback("seekMedia", seekMedia);
 					ExternalInterface.addCallback("setVolume", setVolume);
 					ExternalInterface.addCallback("getVolume", getVolume);
 					ExternalInterface.addCallback("setMuted", setMuted);
@@ -335,9 +335,9 @@ package {
 			Logger.debug("stop");
 			_playerElement.stopMedia();
 		}
-		public function seek(time:Number):void {
+		public function seekMedia(time:Number):void {
 			Logger.debug("seek: " + time);
-			_playerElement.seek(time);
+			_playerElement.seekMedia(time);
 		}
 		public function setVolume(volume:Number):void {
 			_playerElement.setVolume(volume);

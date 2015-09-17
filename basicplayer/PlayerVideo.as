@@ -27,15 +27,16 @@ package basicplayer {
 
 		private var _rtmpInfo:Object = null;
 		private var _streamer:String = "";
+		private var _pseudoStreamingEnabled:Boolean = false;
+		private var _pseudoStreamingStartQueryParam:String = "start";
+
 		private var _isConnected:Boolean = false;
 		private var _isPreloading:Boolean = false;
 		private var _isLoading:Boolean = false;
 		private var _isResetting:Boolean = false;
 		private var _playWhenConnected:Boolean = false;
 		private var _hasStartedPlaying:Boolean = false;
-
-		private var _pseudoStreamingEnabled:Boolean = false;
-		private var _pseudoStreamingStartQueryParam:String = "start";
+		private var _encounteredError:Boolean = false;
 
 		public function PlayerVideo(element:BasicPlayer, autoplay:Boolean, isLive:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
@@ -127,7 +128,7 @@ package basicplayer {
 					if (_stream != null && _stream.bytesTotal > 0)
 						updateBuffer(100 * _stream.bytesLoaded / _stream.bytesTotal, 0);
 					if (_seekPending >= 0)
-						seek(_seekPending);
+						seekMedia(_seekPending);
 					break;
 
 				case "NetStream.Play.Start":
@@ -139,7 +140,7 @@ package basicplayer {
 					_isResetting = false;
 					_isPaused = false;
 					if (_seekPending >= 0) {
-						seek(_seekPending);
+						seekMedia(_seekPending);
 						break;
 					}
 					_element.sendEvent("playing", null);
@@ -177,25 +178,29 @@ package basicplayer {
 
 				case "NetStream.Failed":
 					_element.sendEvent("error", {message: "Stream failure (NetStream.Failed)."});
+					_encounteredError = true;
 					break;
 
 				case "NetStream.Play.FileStructureInvalid":
 					_element.sendEvent("error", {message: "Invalid media file structure (NetStream.Play.FileStructureInvalid)."});
+					_encounteredError = true;
 					break;
 
 				case "NetStream.Play.StreamNotFound":
 					_element.sendEvent("error", {message: "Media not found."});
+					_encounteredError = true;
 					break;
 			}
 		}
 
 		private function securityErrorHandler(event:SecurityErrorEvent):void {
 			_element.sendEvent("error", {message: "securityErrorHandler: "+event+"."});
+			_encounteredError = true;
 		}
 
 		private function asyncErrorHandler(event:AsyncErrorEvent):void {
-			// Ignore AsyncErrorEvent events?
 			_element.sendEvent("error", {message: "asyncErrorHandler: "+event+"."});
+			_encounteredError = true;
 		}
 
 		private function onMetaDataHandler(info:Object):void {
@@ -331,7 +336,7 @@ package basicplayer {
 					_stream.play(getCurrentUrl(0));
 			} else {
 				if (_isEnded) {
-					seek(0);
+					seekMedia(0);
 					_isEnded = false;
 				}
 				_stream.resume();
@@ -341,7 +346,8 @@ package basicplayer {
 				_timer.start();
 			_isPaused = false;
 			_hasStartedPlaying = true;
-			_element.sendEvent("buffering", {playing: true});
+			if (!_encounteredError)
+				_element.sendEvent("buffering", {playing: true});
 		}
 
 		public override function pauseMedia():void {
@@ -356,7 +362,8 @@ package basicplayer {
 			else
 				_stream.pause();
 			_isPaused = true;
-			_element.sendEvent("paused", null);
+			if (!_encounteredError)
+				_element.sendEvent("paused", null);
 		}
 
 		public override function stopMedia():void {
@@ -364,16 +371,18 @@ package basicplayer {
 				return;
 			_stream.seek(0);
 			_stream.pause();
-			_element.sendEvent("stopped", null);
+			if (!_encounteredError)
+				_element.sendEvent("stopped", null);
 		}
 
-		public override function seek(pos:Number):void {
+		public override function seekMedia(pos:Number):void {
 			if (_stream == null || !_isConnected || !_hasStartedPlaying) {
 				_seekPending = pos;
 				return;
 			}
 			_seekPending = -1;
-			_element.sendEvent("buffering", {playing: !_isPaused});
+			if (!_encounteredError)
+				_element.sendEvent("buffering", {playing: !_isPaused});
 
 			// Calculate the position of the buffered video
 			var bufferPosition:Number = _stream.bytesLoaded / _stream.bytesTotal * _duration;

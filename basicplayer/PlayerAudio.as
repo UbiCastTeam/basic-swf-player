@@ -31,6 +31,7 @@
 		private var _bufferingChanged:Boolean = false;
 
 		private var _playAfterLoading:Boolean = false;
+		private var _encounteredError:Boolean = false;
 
 		public function PlayerAudio(element:BasicPlayer, autoplay:Boolean, isLive:Boolean, preload:Boolean, volume:Number, muted:Boolean, timerRate:Number) {
 			_element = element;
@@ -76,6 +77,7 @@
 
 		private function errorHandler(event:IOErrorEvent):void {
 			_element.sendEvent("error", {message: "IOError: "+event.text+".\nThe resource is unavailable or unreachable."});
+			_encounteredError = true;
 		}
 
 		private function timerEventHandler(e:TimerEvent):void {
@@ -111,7 +113,8 @@
 
 		private function didStartPlaying():void {
 			_isPaused = false;
-			_element.sendEvent("playing", null);
+			if (!_encounteredError)
+				_element.sendEvent("playing", null);
 		}
 
 		// Overriden functions
@@ -180,28 +183,37 @@
 			}
 
 			_isPaused = true;
-			_element.sendEvent("paused", null);
+			if (!_encounteredError)
+				_element.sendEvent("paused", null);
 		}
 
 		public override function stopMedia():void {
-			if (_timer != null) {
+			if (_timer != null)
 				_timer.stop();
-			}
 			if (_soundChannel != null) {
 				updateTime(0);
 				_soundChannel.stop();
 			}
-			_element.sendEvent("stopped", null);
+			if (!_encounteredError)
+				_element.sendEvent("stopped", null);
 		}
 
-		public override function seek(pos:Number):void {
+		public override function seekMedia(pos:Number):void {
 			_timer.stop();
-			_element.sendEvent("buffering", {playing: true});
+			if (!_encounteredError)
+				_element.sendEvent("buffering", {playing: true});
 			updateTime(pos);
-			_soundChannel.stop();
-			_soundChannel = _sound.play(_currentTime * 1000, 0, _soundTransform);
+			try {
+				_soundChannel.stop();
+				_soundChannel = _sound.play(_currentTime * 1000, 0, _soundTransform);
+			} catch (err:Error) {
+				if (!_encounteredError) {
+					_element.sendEvent("error", {message: "Failed to seek in media: "+err+"."});
+					_encounteredError = true;
+				}
+				return;
+			}
 			_timer.start();
-
 			didStartPlaying();
 		}
 
