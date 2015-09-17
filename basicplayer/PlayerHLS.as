@@ -55,7 +55,7 @@
 		}
 
 		private function _errorHandler(event:HLSEvent):void {
-			var msg:String = event.error.toString();
+			var msg:String = event.error.msg.toString();
 			if (msg.indexOf("Cannot load M3U8") != -1)
 				msg += "\nThe resource is unavailable or unreachable.";
 			else
