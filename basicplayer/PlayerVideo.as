@@ -334,20 +334,22 @@ package basicplayer {
 					_stream.play(_rtmpInfo.stream);
 				else
 					_stream.play(getCurrentUrl(0));
+				if (!_encounteredError)
+					_element.sendEvent("buffering", {playing: true});
 			} else {
 				if (_isEnded) {
 					seekMedia(0);
 					_isEnded = false;
 				}
 				_stream.resume();
+				if (!_encounteredError)
+					_element.sendEvent("playing", null);
 			}
 
 			if (_timer != null)
 				_timer.start();
 			_isPaused = false;
 			_hasStartedPlaying = true;
-			if (!_encounteredError)
-				_element.sendEvent("buffering", {playing: true});
 		}
 
 		public override function pauseMedia():void {
