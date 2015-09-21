@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Script to compile the swf files using Flex without Grunt
 #
 # To compile the swf files, you have to download the Flex SDK version 4.6 (only needs to be done once)
@@ -17,14 +19,22 @@
 #   sudo nspluginwrapper -v -i /usr/lib/flashplugin-installer/libflashplayer.so
 #   if libssl3.so is missing run: sudo apt-get install libnss3:i386
 
-flex_path="./flex_sdk_4.6"
-target_version="10.1"
-builds[0]="-define+=CONFIG::allowCrossOrigin,true -o build/basicplayer-cross.swf"
-builds[1]="-define+=CONFIG::allowCrossOrigin,false -o build/basicplayer.swf"
+import sys
+import subprocess
 
-for i in 0 1; do
-	$flex_path/bin/mxmlc -strict=true -compiler.debug -warnings=true BasicPlayer.as ${builds[i]} -library-path+=$flex_path/lib -include-libraries+=flashls.swc -use-network=true -source-path . -target-player $target_version -headless-server -static-link-runtime-shared-libraries
-	if [[ $? != 0 ]]; then
-		break
-	fi
-done
+FLEX_PATH = './flex_sdk_4.6'
+TARGET_VERSION = '10.1'
+BUILDS = [
+    {'params': 'CONFIG::allowCrossOrigin,true', 'dest': 'basicplayer-cross.swf'},
+    {'params': 'CONFIG::allowCrossOrigin,false', 'dest': 'basicplayer.swf'},
+]
+BASE_CMD = '%(flex)s/bin/mxmlc -strict=true -compiler.debug -warnings=true BasicPlayer.as -define+=%(params)s -o build/%(dest)s -library-path+=%(flex)s/lib -include-libraries+=flashls.swc -use-network=true -source-path . -target-player %(version)s -headless-server -static-link-runtime-shared-libraries'
+
+
+if __name__ == '__main__':
+    for build in BUILDS:
+        cmd = BASE_CMD % dict(flex=FLEX_PATH, version=TARGET_VERSION, **build)
+        p = subprocess.Popen(cmd, stdin=sys.stdin, stdout=sys.stdout, stderr=sys.stderr, shell=True)
+        p.communicate()
+        if p.returncode != 0:
+            break
