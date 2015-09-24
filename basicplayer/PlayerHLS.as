@@ -6,6 +6,7 @@
 	import org.mangui.hls.HLS;
 	import org.mangui.hls.HLSSettings;
 	import org.mangui.hls.event.HLSEvent;
+	import org.mangui.hls.constant.HLSSeekMode;
 	import org.mangui.hls.constant.HLSPlayStates;
 	import org.mangui.hls.utils.Log;
 
@@ -35,6 +36,7 @@
 			_soundTransform = new SoundTransform(_muted ? 0 : _volume);
 
 			//HLSSettings.logDebug = true;
+			HLSSettings.seekMode = HLSSeekMode.ACCURATE_SEEK;
 			_hls = new HLS();
 			_hls.addEventListener(HLSEvent.PLAYBACK_COMPLETE, _completeHandler);
 			_hls.addEventListener(HLSEvent.ERROR, _errorHandler);
