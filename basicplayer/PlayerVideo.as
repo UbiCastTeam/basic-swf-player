@@ -24,6 +24,7 @@ package basicplayer {
 		private var _seekPending:Number = -1;
 		private var _bufferEmpty:Boolean = false;
 		private var _seekOffset:Number = 0;
+		private var _isSeekingTo:Number = -1;
 
 		private var _rtmpInfo:Object = null;
 		private var _streamer:String = "";
@@ -102,6 +103,10 @@ package basicplayer {
 				if (_pseudoStreamingEnabled)
 					currentTime += _seekOffset;
 			}
+			if (_isSeekingTo >= 0 && currentTime < _isSeekingTo)
+				currentTime = _isSeekingTo;
+			else
+				_isSeekingTo = -1;
 			return currentTime;
 		}
 
@@ -265,6 +270,7 @@ package basicplayer {
 				_stream.close();
 				_connection.close();
 			}
+			_isSeekingTo = -1;
 			_isConnected = false;
 			_isPreloading = false;
 			_hasStartedPlaying = false;
@@ -371,6 +377,7 @@ package basicplayer {
 		public override function stopMedia():void {
 			if (_stream == null)
 				return;
+			_isSeekingTo = -1;
 			_stream.seek(0);
 			_stream.pause();
 			if (!_encounteredError)
@@ -382,6 +389,7 @@ package basicplayer {
 				_seekPending = pos;
 				return;
 			}
+			_isSeekingTo = pos;
 			_seekPending = -1;
 			if (!_encounteredError)
 				_element.sendEvent("buffering", {playing: !_isPaused});

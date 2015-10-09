@@ -18,6 +18,7 @@
 		private var _hlsState:String = HLSPlayStates.IDLE;
 		private var _soundTransform:SoundTransform;
 
+		private var _isSeekingTo:Number = -1;
 		private var _isManifestLoaded:Boolean = false;
 		private var _isPaused:Boolean = true;
 		private var _isEnded:Boolean = false;
@@ -84,7 +85,10 @@
 		}
 
 		private function _mediaTimeHandler(event:HLSEvent):void {
-			updateTime(event.mediatime.position);
+			if (_isSeekingTo < 0 || event.mediatime.position > _isSeekingTo) {
+				_isSeekingTo = -1;
+				updateTime(event.mediatime.position);
+			}
 			if (!_isLive) {
 				updateDuration(event.mediatime.duration);
 				updateBuffer(0, event.mediatime.position + event.mediatime.buffer);
@@ -157,6 +161,7 @@
 		}
 
 		public override function stopMedia():void{
+			_isSeekingTo = -1;
 			_hls.stream.seek(0);
 			_hls.stream.pause();
 			updateTime(0);
@@ -168,11 +173,15 @@
 				return;
 			if (_isLive && pos < 0) {
 				// Reset buffer
+				_isSeekingTo = -1;
 				_hls.stream.close();
 				_hls.load(_mediaUrl);
 			}
-			else
+			else {
+				_isSeekingTo = pos;
+				updateTime(pos);
 				_hls.stream.seek(pos);
+			}
 		}
 
 		public override function setVolume(volume:Number):void {

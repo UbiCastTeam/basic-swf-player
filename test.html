@@ -67,7 +67,10 @@
 
 		// Code to load test preset
 		var swf_url = "build/basicplayer.swf";
-		var default_file = "http://www.sample-videos.com/video/mp4/720/big_buck_bunny_720p_2mb.mp4";
+		var test_file = "http://www.sample-videos.com/video/mp4/720/big_buck_bunny_720p_2mb.mp4";
+		var default_file = test_file;
+		if (document.cookie.indexOf("file=") != -1)
+			default_file = document.cookie.substring(document.cookie.indexOf("file=") + 5);
 		var preset_defaults = {
 			jsinitfunction: "log_msg",
 			jscallbackfunction: "log_msg",
@@ -79,18 +82,17 @@
 		};
 		var presets = [
 			{
-				file: default_file
+				file: test_file
 			},
 			{
 				autoplay: true,
-				file: default_file
+				file: test_file
 			}
 		];
 		var fields = [
 			{ name: "file", type: "String", def: default_file },
 			{ name: "autoplay", type: "Boolean", def: false },
 			{ name: "isvideo", type: "Boolean", def: true }
-			// TODO: add more fields
 		];
 
 		function load_preset(index) {
@@ -110,6 +112,8 @@
 					else
 						value = $("#preset_-1 #id_"+fields[i].name).val();
 					flash_vars[fields[i].name] = value;
+					if (fields[i].name == "file")
+						document.cookie = "file="+value;
 				}
 			}
 			// Set default values
@@ -207,7 +211,8 @@
 			<p class="player-controls" style="display: none;">JS controls:
 				<button type="button" onclick="javascript: $('#player_embed')[0].playMedia();">Play</button>
 				<button type="button" onclick="javascript: $('#player_embed')[0].pauseMedia();">Pause</button>
-				<button type="button" onclick="javascript: $('#player_embed')[0].setCurrentTime(5);">Seek to 5s</button>
+				<button type="button" onclick="javascript: $('#player_embed')[0].seekMedia(5);">Seek to 5s</button>
+				<button type="button" onclick="javascript: $('#player_embed')[0].seekMedia(15);">Seek to 15s</button>
 			</p>
 		</div>
 
@@ -220,7 +225,8 @@
 			<p class="player-controls" style="display: none;">JS controls:
 				<button type="button" onclick="javascript: $('#player_object')[0].playMedia();">Play</button>
 				<button type="button" onclick="javascript: $('#player_object')[0].pauseMedia();">Pause</button>
-				<button type="button" onclick="javascript: $('#player_object')[0].setCurrentTime(5);">Seek to 5s</button>
+				<button type="button" onclick="javascript: $('#player_object')[0].seekMedia(5);">Seek to 5s</button>
+				<button type="button" onclick="javascript: $('#player_object')[0].seekMedia(15);">Seek to 15s</button>
 			</p>
 		</div>
 	</div>
