@@ -142,6 +142,39 @@ package {
 			Logger.debug("ExternalInterface.available: " + ExternalInterface.available.toString());
 			Logger.debug("ExternalInterface.objectID: " + (ExternalInterface.objectID != null ? ExternalInterface.objectID : "no_object_id"));
 
+			// Create media player
+			if (_mediaUrl.search(/(https?|file)\:\/\/.*?\.m3u8(\?.*)?/i) !== -1) {
+				_playerElement = new PlayerHLS(this, _autoplay, _isLive, _preload, _startVolume, _startMuted, _timerRate);
+
+			} else if (_mediaUrl.search(/(https?|file)\:\/\/.*?\.(mp3|oga|wav)(\?.*)?/i) !== -1) {
+				//var player2:AudioDecoder = new com.automatastudios.audio.audiodecoder.AudioDecoder();
+				_playerElement = new PlayerAudio(this, _autoplay, _isLive, _preload, _startVolume, _startMuted, _timerRate);
+
+			} else {
+				_playerElement = new PlayerVideo(this, _autoplay, _isLive, _preload, _startVolume, _startMuted, _timerRate);
+				(_playerElement as PlayerVideo).setStreamer(_streamer);
+				(_playerElement as PlayerVideo).setPseudoStreaming(_enablePseudoStreaming);
+				(_playerElement as PlayerVideo).setPseudoStreamingStartParam(_pseudoStreamingStartQueryParam);
+			}
+			// Display media texture
+			_video = (_playerElement as PlayerClass).getElement();
+			if (_video != null) {
+				(_video as Video).smoothing = _enableSmoothing;
+				addChild(_video);
+			}
+			repositionVideo();
+			// Load media
+			if (_mediaUrl != "")
+				_playerElement.setSrc(_mediaUrl);
+			if (_autoplay)
+				_playerElement.playMedia();
+
+			// Bind events
+			stage.addEventListener(Event.RESIZE, resizeHandler);
+			stage.addEventListener(FullScreenEvent.FULL_SCREEN, stageFullScreenChanged);
+			stage.addEventListener(MouseEvent.CLICK, stageClicked);
+
+			// External interface
 			var jsInitFct:String = (params["jsinitfunction"] != undefined) ? String(params["jsinitfunction"]) : null;
 			if (ExternalInterface.available) {
 				try {
@@ -176,38 +209,6 @@ package {
 					+ "    - Callback function \"" + _jsCallbackFunction + "\" will not be called."
 				);
 			}
-
-			// Create media player
-			if (_mediaUrl.search(/(https?|file)\:\/\/.*?\.m3u8(\?.*)?/i) !== -1) {
-				_playerElement = new PlayerHLS(this, _autoplay, _isLive, _preload, _startVolume, _startMuted, _timerRate);
-
-			} else if (_mediaUrl.search(/(https?|file)\:\/\/.*?\.(mp3|oga|wav)(\?.*)?/i) !== -1) {
-				//var player2:AudioDecoder = new com.automatastudios.audio.audiodecoder.AudioDecoder();
-				_playerElement = new PlayerAudio(this, _autoplay, _isLive, _preload, _startVolume, _startMuted, _timerRate);
-
-			} else {
-				_playerElement = new PlayerVideo(this, _autoplay, _isLive, _preload, _startVolume, _startMuted, _timerRate);
-				(_playerElement as PlayerVideo).setStreamer(_streamer);
-				(_playerElement as PlayerVideo).setPseudoStreaming(_enablePseudoStreaming);
-				(_playerElement as PlayerVideo).setPseudoStreamingStartParam(_pseudoStreamingStartQueryParam);
-			}
-			// Display media texture
-			_video = (_playerElement as PlayerClass).getElement();
-			if (_video != null) {
-				(_video as Video).smoothing = _enableSmoothing;
-				addChild(_video);
-			}
-			repositionVideo();
-			// Load media
-			if (_mediaUrl != "")
-				_playerElement.setSrc(_mediaUrl);
-			if (_autoplay)
-				_playerElement.playMedia();
-
-			// Bind events
-			stage.addEventListener(Event.RESIZE, resizeHandler);
-			stage.addEventListener(FullScreenEvent.FULL_SCREEN, stageFullScreenChanged);
-			stage.addEventListener(MouseEvent.CLICK, stageClicked);
 		}
 
 		private function repositionVideo():void {
