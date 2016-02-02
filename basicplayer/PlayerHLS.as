@@ -37,6 +37,7 @@
 			_soundTransform = new SoundTransform(_muted ? 0 : _volume);
 
 			//HLSSettings.logDebug = true;
+			//HLSSettings.logDebug2 = true;
 			HLSSettings.seekMode = HLSSeekMode.ACCURATE_SEEK;
 			_hls = new HLS();
 			_hls.addEventListener(HLSEvent.PLAYBACK_COMPLETE, _completeHandler);
