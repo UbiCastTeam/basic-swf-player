@@ -24,7 +24,7 @@ package {
 	import basicplayer.PlayerAudio;
 	import basicplayer.PlayerHLS;
 
-	//[SWF(backgroundColor="0x000000")] // Set SWF background color
+	[SWF(backgroundColor="0x000000")] // Set SWF background color
 
 
 	public class BasicPlayer extends MovieClip {
