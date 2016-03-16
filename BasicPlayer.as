@@ -28,22 +28,10 @@ package {
 
 
 	public class BasicPlayer extends MovieClip {
-		private var _mediaUrl:String;
 		private var _jsCallbackFunction:String;
-		private var _autoplay:Boolean;
-		private var _preload:Boolean;
+		private var _thumb:Bitmap;
 		private var _video:DisplayObject;
-		private var _timerRate:Number;
-		private var _enableSmoothing:Boolean;
-		private var _allowedPluginDomain:String;
 		private var _isFullScreen:Boolean = false;
-		private var _startVolume:Number;
-		private var _startMuted:Boolean;
-		private var _isLive:Boolean;
-		private var _streamer:String = "";
-		private var _enablePseudoStreaming:Boolean;
-		private var _pseudoStreamingStartQueryParam:String;
-		private var _HLSMaxBufferLength:Number = 0;
 		private var _defaultVideoRatio:Number = 0;
 		private var _videoRatio:Number = 0;
 
@@ -110,33 +98,33 @@ package {
 
 			// Get settings
 			_jsCallbackFunction = (params["jscallbackfunction"] != undefined) ? String(params["jscallbackfunction"]) : "";
-			_mediaUrl = (params["file"] != undefined) ? String(params["file"]) : "";
-			_preload = (params["preload"] != undefined) ? (String(params["preload"]) == "true") : false;
-			_autoplay = (params["autoplay"] != undefined) ? (String(params["autoplay"]) == "true") : false;
-			_timerRate = (params["timerrate"] != undefined) ? (parseInt(params["timerrate"], 10)) : 250;
-			_enableSmoothing = (params["smoothing"] != undefined) ? (String(params["smoothing"]) == "true") : true;
-			_startVolume = (params["volume"] != undefined) ? (parseFloat(params["volume"])) : 0.8;
-			_startMuted = (params["muted"] != undefined) ?  (String(params["muted"]) == "true") : false;
-			_enablePseudoStreaming = (params["pseudostreaming"] != undefined) ? (String(params["pseudostreaming"]) == "true") : false;
-			_pseudoStreamingStartQueryParam = (params["pseudostreamstart"] != undefined) ? (String(params["pseudostreamstart"])) : "start";
-			_HLSMaxBufferLength = (params["hlsmaxbuffer"] != undefined) ? (parseInt(params["hlsmaxbuffer"], 10)) : 60;
-			_isLive = (params["live"] != undefined) ?  (String(params["live"]) == "true") : false;
-			_streamer = (params["flashstreamer"] != undefined) ? (String(params["flashstreamer"])) : "";
 			_defaultVideoRatio = (params["ratio"] != undefined) ? (parseFloat(params["ratio"])) : 0;
+			var mediaUrl:String = (params["file"] != undefined) ? String(params["file"]) : "";
+			var thumbUrl:String = (params["thumb"] != undefined) ? String(params["thumb"]) : "";
+			var preload:Boolean = (params["preload"] != undefined) ? (String(params["preload"]) == "true") : false;
+			var autoplay:Boolean = (params["autoplay"] != undefined) ? (String(params["autoplay"]) == "true") : false;
+			var timerRate:Number = (params["timerrate"] != undefined) ? (parseInt(params["timerrate"], 10)) : 250;
+			var enableSmoothing:Boolean = (params["smoothing"] != undefined) ? (String(params["smoothing"]) == "true") : true;
+			var startVolume:Number = (params["volume"] != undefined) ? (parseFloat(params["volume"])) : 0.8;
+			var startMuted:Boolean = (params["muted"] != undefined) ?  (String(params["muted"]) == "true") : false;
+			var enablePseudoStreaming:Boolean = (params["pseudostreaming"] != undefined) ? (String(params["pseudostreaming"]) == "true") : false;
+			var pseudoStreamingStart:String = (params["pseudostreamstart"] != undefined) ? (String(params["pseudostreamstart"])) : "start";
+			var HLSMaxBufferLength:Number = (params["hlsmaxbuffer"] != undefined) ? (parseInt(params["hlsmaxbuffer"], 10)) : 30;
+			var isLive:Boolean = (params["live"] != undefined) ?  (String(params["live"]) == "true") : false;
+			var streamer:String = (params["flashstreamer"] != undefined) ? (String(params["flashstreamer"])) : "";
 
-			if (isNaN(_timerRate))
-				_timerRate = 250;
-			if (_startVolume > 1)
-				_startVolume = 1;
+			if (isNaN(timerRate))
+				timerRate = 250;
+			if (startVolume > 1)
+				startVolume = 1;
 
 			if (debug && params["displayinfo"] != undefined && String(params["displayinfo"]) == "true") {
 				Logger.debug("stage: " + stage.stageWidth + "x" + stage.stageHeight);
-				Logger.debug("file: " + _mediaUrl);
-				Logger.debug("streamer: " + _streamer);
-				Logger.debug("autoplay: " + _autoplay.toString());
-				Logger.debug("preload: " + _preload.toString());
-				Logger.debug("smoothing: " + _enableSmoothing.toString());
-				Logger.debug("timerrate: " + _timerRate.toString());
+				Logger.debug("file: " + mediaUrl);
+				Logger.debug("autoplay: " + autoplay.toString());
+				Logger.debug("preload: " + preload.toString());
+				Logger.debug("smoothing: " + enableSmoothing.toString());
+				Logger.debug("timerrate: " + timerRate.toString());
 				Logger.debug("displayState: " +(stage.hasOwnProperty("displayState")).toString());
 			}
 
@@ -144,32 +132,41 @@ package {
 			Logger.debug("ExternalInterface.available: " + ExternalInterface.available.toString());
 			Logger.debug("ExternalInterface.objectID: " + (ExternalInterface.objectID != null ? ExternalInterface.objectID : "no_object_id"));
 
-			// Create media player
-			if (_mediaUrl.search(/(https?|file)\:\/\/.*?\.m3u8(\?.*)?/i) !== -1) {
-				_playerElement = new PlayerHLS(this, _autoplay, _isLive, _preload, _startVolume, _startMuted, _timerRate);
-				(_playerElement as PlayerHLS).setMaxBufferLength(_HLSMaxBufferLength);
+			// Display thumbnail
+			if (thumbUrl != "") {
+				var loader:Loader = new Loader();
+				loader.contentLoaderInfo.addEventListener(Event.COMPLETE, onThumbLoad);
+				loader.load(new URLRequest(thumbUrl));
+			}
 
-			} else if (_mediaUrl.search(/(https?|file)\:\/\/.*?\.(mp3|oga|wav)(\?.*)?/i) !== -1) {
+			// Create media player
+			if (mediaUrl.search(/(https?|file)\:\/\/.*?\.m3u8(\?.*)?/i) !== -1) {
+				_playerElement = new PlayerHLS(this, autoplay, isLive, preload, startVolume, startMuted, timerRate);
+				if (isNaN(HLSMaxBufferLength))
+					HLSMaxBufferLength = 30;
+				(_playerElement as PlayerHLS).setMaxBufferLength(HLSMaxBufferLength);
+
+			} else if (mediaUrl.search(/(https?|file)\:\/\/.*?\.(mp3|oga|wav)(\?.*)?/i) !== -1) {
 				//var player2:AudioDecoder = new com.automatastudios.audio.audiodecoder.AudioDecoder();
-				_playerElement = new PlayerAudio(this, _autoplay, _isLive, _preload, _startVolume, _startMuted, _timerRate);
+				_playerElement = new PlayerAudio(this, autoplay, isLive, preload, startVolume, startMuted, timerRate);
 
 			} else {
-				_playerElement = new PlayerVideo(this, _autoplay, _isLive, _preload, _startVolume, _startMuted, _timerRate);
-				(_playerElement as PlayerVideo).setStreamer(_streamer);
-				(_playerElement as PlayerVideo).setPseudoStreaming(_enablePseudoStreaming);
-				(_playerElement as PlayerVideo).setPseudoStreamingStartParam(_pseudoStreamingStartQueryParam);
+				_playerElement = new PlayerVideo(this, autoplay, isLive, preload, startVolume, startMuted, timerRate);
+				(_playerElement as PlayerVideo).setStreamer(streamer);
+				(_playerElement as PlayerVideo).setPseudoStreaming(enablePseudoStreaming);
+				(_playerElement as PlayerVideo).setPseudoStreamingStartParam(pseudoStreamingStart);
 			}
 			// Display media texture
 			_video = (_playerElement as PlayerClass).getElement();
 			if (_video != null) {
-				(_video as Video).smoothing = _enableSmoothing;
+				(_video as Video).smoothing = enableSmoothing;
 				addChild(_video);
 			}
-			repositionVideo();
+			onSizeChange();
 			// Load media
-			if (_mediaUrl != "")
-				_playerElement.setSrc(_mediaUrl);
-			if (_autoplay)
+			if (mediaUrl != "")
+				_playerElement.setSrc(mediaUrl);
+			if (autoplay)
 				_playerElement.playMedia();
 
 			// Bind events
@@ -214,7 +211,14 @@ package {
 			}
 		}
 
-		private function repositionVideo():void {
+		private function onThumbLoad(event:Event):void {
+			_thumb = Bitmap(LoaderInfo(event.target).content);
+			_thumb.smoothing = true;
+			addChildAt(_thumb, 0);
+			onSizeChange();
+		}
+
+		private function onSizeChange():void {
 			var contWidth:Number;
 			var contHeight:Number;
 			if (_isFullScreen) {
@@ -228,7 +232,16 @@ package {
 			Logger.debug("Positioning video ("+stage.displayState+"). Container size: "+contWidth+"x"+contHeight+".");
 			Logger.setSize(contWidth, contHeight);
 
-			if (_playerElement is PlayerVideo || _playerElement is PlayerHLS) {
+			if (_thumb) {
+				Logger.debug("Thumb pre: "+_thumb.width+"x"+_thumb.height);
+				_thumb.x = 0;
+				_thumb.y = 0;
+				_thumb.width = contWidth;
+				_thumb.height = contHeight;
+				Logger.debug("Thumb post: "+_thumb.width+"x"+_thumb.height);
+			}
+
+			if (_video && (_playerElement is PlayerVideo || _playerElement is PlayerHLS)) {
 				var fill:Boolean = false;
 				if (_defaultVideoRatio <= 0 && _videoRatio <= 0) {
 					Logger.debug("Positionning: video's ratio is unknown, using full stage size.");
@@ -278,7 +291,7 @@ package {
 		}
 
 		public function resizeHandler(event:Event):void {
-			repositionVideo();
+			onSizeChange();
 		}
 
 		public function goToGitHub(event:ContextMenuEvent):void {
@@ -288,7 +301,7 @@ package {
 		public function stageFullScreenChanged(event:FullScreenEvent):void {
 			Logger.debug("Fullscreen event: " + event.fullScreen.toString());
 			_isFullScreen = event.fullScreen;
-			repositionVideo();
+			onSizeChange();
 		}
 
 		public function errorHandler(event:UncaughtErrorEvent):void {
@@ -360,7 +373,7 @@ package {
 			if (isNaN(ratio) || ratio < 0 || ratio == _videoRatio)
 				return;
 			_videoRatio = ratio;
-			repositionVideo();
+			onSizeChange();
 			sendEvent("ratio", {ratio: ratio});
 		}
 		// END: external interface
