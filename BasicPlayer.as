@@ -119,7 +119,7 @@ package {
 			_startMuted = (params["muted"] != undefined) ?  (String(params["muted"]) == "true") : false;
 			_enablePseudoStreaming = (params["pseudostreaming"] != undefined) ? (String(params["pseudostreaming"]) == "true") : false;
 			_pseudoStreamingStartQueryParam = (params["pseudostreamstart"] != undefined) ? (String(params["pseudostreamstart"])) : "start";
-			_HLSMaxBufferLength = (params["maxbuffer"] != undefined) ? (parseInt(params["maxbuffer"], 10)) : 60;
+			_HLSMaxBufferLength = (params["hlsmaxbuffer"] != undefined) ? (parseInt(params["hlsmaxbuffer"], 10)) : 60;
 			_isLive = (params["live"] != undefined) ?  (String(params["live"]) == "true") : false;
 			_streamer = (params["flashstreamer"] != undefined) ? (String(params["flashstreamer"])) : "";
 			_defaultVideoRatio = (params["ratio"] != undefined) ? (parseFloat(params["ratio"])) : 0;
