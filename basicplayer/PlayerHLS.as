@@ -51,6 +51,10 @@
 			_video.attachNetStream(_hls.stream);
 		}
 
+		public function setMaxBufferLength(maxBufferLength:Number):void {
+			HLSSettings.maxBufferLength = maxBufferLength;
+		}
+
 		private function _completeHandler(event:HLSEvent):void {
 			_isEnded = true;
 			_isPaused = true;

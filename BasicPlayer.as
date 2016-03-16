@@ -43,6 +43,7 @@ package {
 		private var _streamer:String = "";
 		private var _enablePseudoStreaming:Boolean;
 		private var _pseudoStreamingStartQueryParam:String;
+		private var _HLSMaxBufferLength:Number = 0;
 		private var _defaultVideoRatio:Number = 0;
 		private var _videoRatio:Number = 0;
 
@@ -118,6 +119,7 @@ package {
 			_startMuted = (params["muted"] != undefined) ?  (String(params["muted"]) == "true") : false;
 			_enablePseudoStreaming = (params["pseudostreaming"] != undefined) ? (String(params["pseudostreaming"]) == "true") : false;
 			_pseudoStreamingStartQueryParam = (params["pseudostreamstart"] != undefined) ? (String(params["pseudostreamstart"])) : "start";
+			_HLSMaxBufferLength = (params["maxbuffer"] != undefined) ? (parseInt(params["maxbuffer"], 10)) : 60;
 			_isLive = (params["live"] != undefined) ?  (String(params["live"]) == "true") : false;
 			_streamer = (params["flashstreamer"] != undefined) ? (String(params["flashstreamer"])) : "";
 			_defaultVideoRatio = (params["ratio"] != undefined) ? (parseFloat(params["ratio"])) : 0;
@@ -145,6 +147,7 @@ package {
 			// Create media player
 			if (_mediaUrl.search(/(https?|file)\:\/\/.*?\.m3u8(\?.*)?/i) !== -1) {
 				_playerElement = new PlayerHLS(this, _autoplay, _isLive, _preload, _startVolume, _startMuted, _timerRate);
+				(_playerElement as PlayerHLS).setMaxBufferLength(_HLSMaxBufferLength);
 
 			} else if (_mediaUrl.search(/(https?|file)\:\/\/.*?\.(mp3|oga|wav)(\?.*)?/i) !== -1) {
 				//var player2:AudioDecoder = new com.automatastudios.audio.audiodecoder.AudioDecoder();
