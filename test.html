@@ -24,7 +24,7 @@
 			if (!("allowfullscreen" in flash_attrs))
 				flash_attrs.allowfullscreen = "true";
 			if (!("wmode" in flash_attrs))
-				flash_attrs.wmode = "transparent";
+				flash_attrs.wmode = "opaque";
 			if (!("scale" in flash_attrs))
 				flash_attrs.scale = "default";
 			if (!("loop" in flash_attrs))
@@ -33,6 +33,8 @@
 				flash_attrs.play = "true";
 			if (!("quality" in flash_attrs))
 				flash_attrs.quality = "high";
+			if (!("bgcolor" in flash_attrs))
+				flash_attrs.bgcolor = "000000";
 
 			var html;
 			if (tag_type == "object") {
@@ -60,6 +62,25 @@
 			return html;
 		}
 
+		function get_cookie(c_name, c_default) {
+			if (document.cookie.length > 0) {
+				var c_start = document.cookie.indexOf(c_name + "=");
+				if (c_start != -1) {
+					c_start = c_start + c_name.length+1;
+					var c_end = document.cookie.indexOf(";", c_start);
+					if (c_end == -1)
+						c_end = document.cookie.length;
+					return unescape(document.cookie.substring(c_start, c_end));
+				}
+			}
+			return c_default !== undefined ? c_default : "";
+		};
+		function set_cookie(c_name, value, expiredays) {
+			var exdate = new Date();
+			exdate.setDate(exdate.getDate() + (expiredays ? expiredays : 360));
+			document.cookie = c_name+"="+escape(value)+"; expires="+exdate.toUTCString()+"; path=/";
+		};
+
 		function log_msg() {
 			if (window.console && window.console.log)
 				console.log.apply(this, arguments);
@@ -68,9 +89,13 @@
 		// Code to load test preset
 		var swf_url = "build/basicplayer.swf";
 		var test_file = "http://www.sample-videos.com/video/mp4/720/big_buck_bunny_720p_2mb.mp4";
-		var default_file = test_file;
-		if (document.cookie.indexOf("file=") != -1)
-			default_file = document.cookie.substring(document.cookie.indexOf("file=") + 5);
+		var default_file = get_cookie("test_file");
+		if (!default_file)
+			default_file = test_file;
+		var test_thumb = "";
+		var default_thumb = get_cookie("test_thumb");
+		if (!default_thumb)
+			default_thumb = test_thumb;
 		var preset_defaults = {
 			jsinitfunction: "log_msg",
 			jscallbackfunction: "log_msg",
@@ -91,6 +116,7 @@
 		];
 		var fields = [
 			{ name: "file", type: "String", def: default_file },
+			{ name: "thumb", type: "String", def: default_thumb },
 			{ name: "autoplay", type: "Boolean", def: false },
 			{ name: "isvideo", type: "Boolean", def: true }
 		];
@@ -113,7 +139,9 @@
 						value = $("#preset_-1 #id_"+fields[i].name).val();
 					flash_vars[fields[i].name] = value;
 					if (fields[i].name == "file")
-						document.cookie = "file="+value;
+						set_cookie("test_file", value);
+					else if (fields[i].name == "thumb")
+						set_cookie("test_thumb", value);
 				}
 			}
 			// Set default values
@@ -177,7 +205,7 @@
 			background: #cfc;
 		}
 		.player-block {
-			background: #666;
+			background: #000;
 			color: #fff;
 			width: 640px;
 			height: 360px;

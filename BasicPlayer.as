@@ -35,6 +35,7 @@ package {
 		private var _isFullScreen:Boolean = false;
 		private var _defaultVideoRatio:Number = 0;
 		private var _videoRatio:Number = 0;
+		private var _thumbRatio:Number = 0;
 
 		// player
 		private var _playerElement:PlayerClass;
@@ -141,11 +142,13 @@ package {
 					HLSMaxBufferLength = 30;
 				(_playerElement as PlayerHLS).setMaxBufferLength(HLSMaxBufferLength);
 
-			} else if (mediaUrl.search(/(https?|file)\:\/\/.*?\.(mp3|oga|wav)(\?.*)?/i) !== -1) {
+			}
+			else if (mediaUrl.search(/(https?|file)\:\/\/.*?\.(mp3|oga|wav)(\?.*)?/i) !== -1) {
 				//var player2:AudioDecoder = new com.automatastudios.audio.audiodecoder.AudioDecoder();
 				_playerElement = new PlayerAudio(this, autoplay, isLive, preload, startVolume, startMuted, timerRate);
 
-			} else {
+			}
+			else {
 				_playerElement = new PlayerVideo(this, autoplay, isLive, preload, startVolume, startMuted, timerRate);
 				(_playerElement as PlayerVideo).setStreamer(streamer);
 				(_playerElement as PlayerVideo).setPseudoStreaming(enablePseudoStreaming);
@@ -213,9 +216,13 @@ package {
 		private function onThumbLoad(event:Event):void {
 			_thumb = Bitmap(LoaderInfo(event.target).content);
 			_thumb.smoothing = true;
+			if (LoaderInfo(event.target).width > 0 && LoaderInfo(event.target).height > 0)
+				_thumbRatio = LoaderInfo(event.target).width / LoaderInfo(event.target).height;
+			else
+				_thumbRatio = 0;
 			addChildAt(_thumb, 0);
+			Logger.debug("Thumbnail loaded ("+LoaderInfo(event.target).width+"x"+LoaderInfo(event.target).height+").");
 			onSizeChange();
-			Logger.debug("Thumbnail loaded.");
 			onReady();
 		}
 
@@ -246,48 +253,58 @@ package {
 			if (_isFullScreen) {
 				contWidth = stage.fullScreenWidth;
 				contHeight = stage.fullScreenHeight;
-			} else {
+			}
+			else {
 				contWidth = stage.stageWidth;
 				contHeight = stage.stageHeight;
 			}
+			var stageRatio:Number = contWidth / contHeight;
 
-			Logger.debug("Positioning video ("+stage.displayState+"). Container size: "+contWidth+"x"+contHeight+".");
+			Logger.debug("Positioning elements ("+stage.displayState+"). Container size: "+contWidth+"x"+contHeight+".");
 			Logger.setSize(contWidth, contHeight);
 
 			if (_thumb) {
-				Logger.debug("Thumb pre: "+_thumb.width+"x"+_thumb.height);
 				_thumb.x = 0;
 				_thumb.y = 0;
-				_thumb.width = contWidth;
-				_thumb.height = contHeight;
-				Logger.debug("Thumb post: "+_thumb.width+"x"+_thumb.height);
+				if (_thumbRatio <= 0 || _thumbRatio == stageRatio) {
+					_thumb.width = contWidth;
+					_thumb.height = contHeight;
+				}
+				else if (_thumbRatio > stageRatio) {
+					_thumb.width = contWidth;
+					_thumb.height = Math.ceil(contWidth / _thumbRatio);
+					_thumb.y = Math.round(contHeight / 2 - _thumb.height / 2);
+				}
+				else {
+					_thumb.width = Math.ceil(contHeight * _thumbRatio);
+					_thumb.height = contHeight;
+					_thumb.x = Math.round(contWidth / 2 - _thumb.width / 2);
+				}
+				Logger.debug("Thumb position: "+_thumb.width+" x "+_thumb.height+" (x: "+_thumb.x+", y: "+_thumb.y+").");
 			}
 
 			if (_video && (_playerElement is PlayerVideo || _playerElement is PlayerHLS)) {
 				var fill:Boolean = false;
 				if (_defaultVideoRatio <= 0 && _videoRatio <= 0) {
-					Logger.debug("Positionning: video's ratio is unknown, using full stage size.");
+					Logger.debug("Video position: video's ratio is unknown, using full stage size.");
 					fill = true;
 				}
-				// calculate ratios
+				// adjust size and position
+				var videoRatio:Number = (_videoRatio > 0 ? _videoRatio : _defaultVideoRatio);
 				_video.x = 0;
 				_video.y = 0;
-				if (fill || stageRatio == videoRatio) {
+				if (fill || videoRatio == stageRatio) {
 					_playerElement.setSize(contWidth, contHeight);
-				} else {
-					var stageRatio:Number = contWidth / contHeight;
-					var videoRatio:Number = (_videoRatio > 0 ? _videoRatio : _defaultVideoRatio);
-					// adjust size and position
-					if (videoRatio > stageRatio) {
-						_playerElement.setSize(contWidth, Math.ceil(contWidth / videoRatio));
-						_video.y = Math.round(contHeight / 2 - _video.height / 2);
-						Logger.debug("Positionning: video's size: "+contWidth+" x "+Math.ceil(contWidth / videoRatio)+" (x: "+_video.x+", y: "+_video.y+").");
-					} else {
-						_playerElement.setSize(Math.ceil(contHeight * videoRatio), contHeight);
-						_video.x = Math.round(contWidth / 2 - _video.width / 2);
-						Logger.debug("Positionning: video's size: "+Math.ceil(contHeight * videoRatio)+" x "+contHeight+" (x: "+_video.x+", y: "+_video.y+").");
-					}
 				}
+				else if (videoRatio > stageRatio) {
+					_playerElement.setSize(contWidth, Math.ceil(contWidth / videoRatio));
+					_video.y = Math.round(contHeight / 2 - _video.height / 2);
+				}
+				else {
+					_playerElement.setSize(Math.ceil(contHeight * videoRatio), contHeight);
+					_video.x = Math.round(contWidth / 2 - _video.width / 2);
+				}
+				Logger.debug("Video position: "+_video.width+" x "+_video.height+" (x: "+_video.x+", y: "+_video.y+").");
 			}
 		}
 
