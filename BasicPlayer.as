@@ -28,6 +28,7 @@ package {
 
 
 	public class BasicPlayer extends MovieClip {
+		private var _jsInitFct:String;
 		private var _jsCallbackFunction:String;
 		private var _thumb:Bitmap;
 		private var _video:DisplayObject;
@@ -97,6 +98,7 @@ package {
 			this.contextMenu = ctxtMenu;
 
 			// Get settings
+			_jsInitFct = (params["jsinitfunction"] != undefined) ? String(params["jsinitfunction"]) : null;
 			_jsCallbackFunction = (params["jscallbackfunction"] != undefined) ? String(params["jscallbackfunction"]) : "";
 			_defaultVideoRatio = (params["ratio"] != undefined) ? (parseFloat(params["ratio"])) : 0;
 			var mediaUrl:String = (params["file"] != undefined) ? String(params["file"]) : "";
@@ -131,13 +133,6 @@ package {
 			// Attach javascript
 			Logger.debug("ExternalInterface.available: " + ExternalInterface.available.toString());
 			Logger.debug("ExternalInterface.objectID: " + (ExternalInterface.objectID != null ? ExternalInterface.objectID : "no_object_id"));
-
-			// Display thumbnail
-			if (thumbUrl != "") {
-				var loader:Loader = new Loader();
-				loader.contentLoaderInfo.addEventListener(Event.COMPLETE, onThumbLoad);
-				loader.load(new URLRequest(thumbUrl));
-			}
 
 			// Create media player
 			if (mediaUrl.search(/(https?|file)\:\/\/.*?\.m3u8(\?.*)?/i) !== -1) {
@@ -174,11 +169,9 @@ package {
 			stage.addEventListener(FullScreenEvent.FULL_SCREEN, stageFullScreenChanged);
 			stage.addEventListener(MouseEvent.CLICK, stageClicked);
 
-			// External interface
-			var jsInitFct:String = (params["jsinitfunction"] != undefined) ? String(params["jsinitfunction"]) : null;
+			// Add JavaScript methods on object
 			if (ExternalInterface.available) {
 				try {
-					// Add JavaScript methods on object
 					ExternalInterface.addCallback("playMedia", playMedia);
 					ExternalInterface.addCallback("pauseMedia", pauseMedia);
 					ExternalInterface.addCallback("stopMedia", stopMedia);
@@ -191,11 +184,6 @@ package {
 					ExternalInterface.addCallback("disableLog", disableLog);
 					ExternalInterface.addCallback("setVideoRatio", setVideoRatio);
 					Logger.debug("JavaScript methods added.");
-					// Fire init method
-					if (jsInitFct) {
-						ExternalInterface.call(jsInitFct, (ExternalInterface.objectID != null ? ExternalInterface.objectID : "no_object_id"));
-						Logger.debug("Init js function \"" + jsInitFct + "\" successfully called.");
-					}
 				} catch (error:SecurityError) {
 					Logger.debug("A SecurityError occurred: " + error.message);
 				} catch (error:Error) {
@@ -205,9 +193,20 @@ package {
 			else {
 				Logger.debug(
 					"No ExternalInterface available:\n"
-					+ "    - Init function \"" + jsInitFct + "\" will not be called.\n"
+					+ "    - Init function \"" + _jsInitFct + "\" will not be called.\n"
 					+ "    - Callback function \"" + _jsCallbackFunction + "\" will not be called."
 				);
+			}
+
+			// Display thumbnail
+			if (thumbUrl != "") {
+				var loader:Loader = new Loader();
+				loader.contentLoaderInfo.addEventListener(Event.COMPLETE, onThumbLoad);
+				loader.contentLoaderInfo.addEventListener(IOErrorEvent.IO_ERROR, onThumbError);
+				loader.load(new URLRequest(thumbUrl));
+			}
+			else {
+				onReady();
 			}
 		}
 
@@ -216,6 +215,29 @@ package {
 			_thumb.smoothing = true;
 			addChildAt(_thumb, 0);
 			onSizeChange();
+			Logger.debug("Thumbnail loaded.");
+			onReady();
+		}
+
+		private function onThumbError(event:IOErrorEvent):void {
+			Logger.debug("Failed to load thumbnail: " + event);
+			onReady();
+		}
+
+		private function onReady():void {
+			if (!ExternalInterface.available)
+				return;
+			// Fire init method
+			try {
+				if (_jsInitFct) {
+					ExternalInterface.call(_jsInitFct, (ExternalInterface.objectID != null ? ExternalInterface.objectID : "no_object_id"));
+					Logger.debug("Init js function \"" + _jsInitFct + "\" successfully called.");
+				}
+			} catch (error:SecurityError) {
+				Logger.debug("A SecurityError occurred: " + error.message);
+			} catch (error:Error) {
+				Logger.debug("An Error occurred: " + error.message);
+			}
 		}
 
 		private function onSizeChange():void {
