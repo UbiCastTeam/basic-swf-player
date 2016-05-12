@@ -122,6 +122,7 @@
 		public override function setSrc(url:String):void {
 			_mediaUrl = url;
 			_isLoaded = false;
+			_isPaused = true;
 			if (_preload)
 				loadMedia();
 		}
@@ -160,6 +161,8 @@
 		}
 
 		public override function playMedia():void {
+			if (!_isPaused)
+				return;
 			if (!_isLoaded) {
 				_playAfterLoading = true;
 				if (!_isLoading)
@@ -167,8 +170,11 @@
 				return;
 			}
 			_timer.stop();
+			if (_soundChannel != null) {
+				_soundChannel.stop();
+				_soundChannel.removeEventListener(Event.SOUND_COMPLETE, soundCompleteHandler);
+			}
 			_soundChannel = _sound.play(_currentTime*1000, 0, _soundTransform);
-			_soundChannel.removeEventListener(Event.SOUND_COMPLETE, soundCompleteHandler);
 			_soundChannel.addEventListener(Event.SOUND_COMPLETE, soundCompleteHandler);
 			_timer.start();
 
@@ -181,7 +187,6 @@
 				updateTime(_soundChannel.position / 1000);
 				_soundChannel.stop();
 			}
-
 			_isPaused = true;
 			if (!_encounteredError)
 				_element.sendEvent("paused", null);
@@ -194,6 +199,7 @@
 				updateTime(0);
 				_soundChannel.stop();
 			}
+			_isPaused = true;
 			if (!_encounteredError)
 				_element.sendEvent("stopped", null);
 		}
@@ -205,7 +211,9 @@
 			updateTime(pos);
 			try {
 				_soundChannel.stop();
+				_soundChannel.removeEventListener(Event.SOUND_COMPLETE, soundCompleteHandler);
 				_soundChannel = _sound.play(_currentTime * 1000, 0, _soundTransform);
+				_soundChannel.addEventListener(Event.SOUND_COMPLETE, soundCompleteHandler);
 			} catch (err:Error) {
 				if (!_encounteredError) {
 					_element.sendEvent("error", {message: "Failed to seek in media: "+err+"."});
