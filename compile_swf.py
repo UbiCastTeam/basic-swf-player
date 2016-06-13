@@ -25,8 +25,8 @@ import subprocess
 FLEX_PATH = './flex_sdk_4.6'
 TARGET_VERSION = '10.1'
 BUILDS = [
-    {'params': 'CONFIG::allowCrossOrigin,true', 'dest': 'basicplayer-cross.swf'},
-    {'params': 'CONFIG::allowCrossOrigin,false', 'dest': 'basicplayer.swf'},
+    {'params': 'CONFIG::allowCrossOrigin,true', 'dest': 'basicplayer.swf'},
+    {'params': 'CONFIG::allowCrossOrigin,false', 'dest': 'basicplayer-nocross.swf'},
 ]
 BASE_CMD = '%(flex)s/bin/mxmlc -strict=true -compiler.debug -warnings=true BasicPlayer.as -define+=%(params)s -o build/%(dest)s -library-path+=%(flex)s/lib -include-libraries+=flashls.swc -use-network=true -source-path . -target-player %(version)s -headless-server -static-link-runtime-shared-libraries'
 
