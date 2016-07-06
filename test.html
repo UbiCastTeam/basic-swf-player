@@ -12,7 +12,7 @@
 			var attr;
 			var _flash_vars = [];
 			for (attr in flash_vars) {
-				_flash_vars.push(attr+"="+flash_vars[attr]);
+				_flash_vars.push(attr+"="+window.encodeURIComponent(flash_vars[attr]));
 			}
 			_flash_vars.push("id="+tag_id);
 			_flash_vars = _flash_vars.join("&amp;");
