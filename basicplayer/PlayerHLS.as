@@ -39,6 +39,8 @@
 			//HLSSettings.logDebug = true;
 			//HLSSettings.logDebug2 = true;
 			HLSSettings.seekMode = HLSSeekMode.ACCURATE_SEEK;
+			// No need for very accurate time, so increase time period
+			HLSSettings.mediaTimePeriod = 220;
 			_hls = new HLS();
 			_hls.addEventListener(HLSEvent.PLAYBACK_COMPLETE, _completeHandler);
 			_hls.addEventListener(HLSEvent.ERROR, _errorHandler);
